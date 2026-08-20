@@ -1,0 +1,2602 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base href="/"/>
+    <meta charset="utf-8"/>
+    <title>OAuth | Zonai</title>
+    <meta property="og:title" content="OAuth | Zonai"/>
+    <link href="/favicon.png" rel="icon" type="image/png"/>
+    <meta name="description" content="Sign in with Google, Apple, GitHub and other providers — zonai runs the OAuth2/OIDC flow itself and mints its own session."/>
+    <meta property="og:description" content="Sign in with Google, Apple, GitHub and other providers — zonai runs the OAuth2/OIDC flow itself and mints its own session."/>
+    <style>
+      .docs .header-container {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        z-index: 10;
+        backdrop-filter: blur(8px);
+      }
+      .docs .main-container {
+        padding: 0;
+        margin-left: auto;
+        margin-right: auto;
+      }
+      @media all and (min-width: 768px) {
+        .docs .main-container {
+          padding-left: 1.25rem;
+          padding-right: 1.25rem;
+        }
+      }
+      .docs .main-container .sidebar-barrier {
+        position: absolute;
+        z-index: 9;
+        opacity: 0.0;
+        pointer-events: none;
+        background-color: var(--background);
+        inset: 0;
+      }
+      .docs .main-container .sidebar-barrier:has(+ .sidebar-container.open) {
+        opacity: 0.5;
+        pointer-events: auto;
+      }
+      .docs .main-container .sidebar-container {
+        position: fixed;
+        top: 4rem;
+        bottom: 0;
+        z-index: 10;
+        width: 17rem;
+        overflow-y: auto;
+        transition: transform 150ms ease-in-out;
+        transform: translateX(-100%);
+      }
+      @media all and (min-width: 768px) {
+        .docs .main-container .sidebar-container {
+          margin-left: -1.25rem;
+        }
+      }
+      @media all and (min-width: 1024px) {
+        .docs .main-container .sidebar-container {
+          margin-left: 0;
+          transform: translateX(0);
+        }
+      }
+      @media all and (max-width: 1023px) {
+        .docs .main-container .sidebar-container {
+          position: fixed;
+          top: 0;
+          border-right-style: solid;
+          border-right-color: #0000000d;
+          border-right-width: 1px;
+          background-color: var(--background);
+        }
+      }
+      .docs .main-container .sidebar-container.open {
+        transform: translateX(0);
+      }
+      .docs .main-container main {
+        position: relative;
+        padding-top: 4rem;
+      }
+      @media all and (min-width: 1024px) {
+        .docs .main-container main {
+          padding-left: 17rem;
+        }
+      }
+      .docs .main-container main > div {
+        display: flex;
+        padding-top: 2rem;
+        padding-left: 1rem;
+        padding-right: 1rem;
+        justify-content: center;
+      }
+      @media all and (min-width: 1024px) {
+        .docs .main-container main > div {
+          padding-left: 4rem;
+        }
+      }
+      .docs .main-container main > div .content-container {
+        min-width: 0;
+        max-width: 80rem;
+        padding-right: 0;
+        flex-grow: 1;
+        flex-shrink: 1;
+        flex-basis: 0%;
+      }
+      @media all and (min-width: 1280px) {
+        .docs .main-container main > div .content-container {
+          padding-right: 3rem;
+        }
+      }
+      .docs .main-container main > div .content-container .content-header {
+        margin-bottom: 2rem;
+        color: var(--content-headings);
+      }
+      .docs .main-container main > div .content-container .content-header h1 {
+        font-size: 2rem;
+        line-height: 2.25rem;
+      }
+      .docs .main-container main > div .content-container .content-header p {
+        margin-top: 0.75rem;
+        font-size: 1.25rem;
+        line-height: 1.25rem;
+      }
+      .docs .main-container main > div .content-container .content-header img {
+        margin-top: 1rem;
+        border-radius: 0.375rem;
+      }
+      .docs .main-container main > div .content-container .content-footer {
+        margin-top: 2rem;
+      }
+      .docs .main-container main > div aside.toc {
+        display: none;
+        position: relative;
+        width: 17rem;
+      }
+      @media all and (min-width: 1280px) {
+        .docs .main-container main > div aside.toc {
+          display: block;
+        }
+      }
+      .docs .main-container main > div aside.toc > div {
+        position: sticky;
+        top: 6rem;
+      }
+      .docs .main-container main > div aside.toc h3 {
+        margin-bottom: 0.5rem;
+        opacity: 0.75;
+        font-size: 0.875rem;
+        font-weight: 600;
+        line-height: 1.25rem;
+      }
+      .docs .main-container main > div aside.toc ul {
+        margin-top: 1rem;
+      }
+      .docs .main-container main > div aside.toc li {
+        margin-top: 0.5rem;
+        font-size: 14px;
+      }
+    </style>
+    <style>
+      .docs .content-header p {
+        opacity: 0.75;
+        line-height: 1.6em;
+      }
+      .content kbd {
+        padding: 0.0625rem 0.3125rem;
+        border: solid color-mix(in srgb, currentColor 25%, transparent) 1px;
+        border-radius: 5px;
+        font-family: monospace;
+        font-size: 0.8125em;
+        white-space: nowrap;
+      }
+      .header-home-link {
+        display: flex;
+        padding: 0.5rem 0.625rem;
+        border-radius: 8px;
+        opacity: 0.8;
+        align-items: center;
+        column-gap: 0.4rem;
+        color: inherit;
+        font-size: 0.875rem;
+        text-decoration: none;
+        white-space: nowrap;
+      }
+      .header-home-link:hover {
+        opacity: 1.0;
+        background-color: color-mix(in srgb, currentColor 5%, transparent);
+      }
+      @media screen and (max-width: 600px) {
+        .header-home-link .header-home-label {
+          display: none;
+        }
+      }
+      .header-icon-link {
+        display: flex;
+        padding: 0.6rem;
+        border-radius: 8px;
+        opacity: 0.8;
+        align-items: center;
+        color: inherit;
+      }
+      .header-icon-link:hover {
+        opacity: 1.0;
+        background-color: color-mix(in srgb, currentColor 5%, transparent);
+      }
+      .breadcrumbs {
+        display: flex;
+        margin-bottom: 0.625rem;
+        opacity: 0.6;
+        column-gap: 0.5rem;
+        font-size: 0.8125rem;
+      }
+      .breadcrumbs a {
+        color: inherit;
+        text-decoration: none;
+      }
+      .breadcrumbs a:hover {
+        text-decoration: underline;
+      }
+      .breadcrumbs .breadcrumb-sep {
+        opacity: 0.5;
+      }
+      .page-nav {
+        display: flex;
+        padding-top: 1.5rem;
+        margin-top: 3rem;
+        border-top-style: solid;
+        border-top-color: color-mix(in srgb, currentColor 12%, transparent);
+        border-top-width: 1px;
+        justify-content: space-between;
+        column-gap: 1rem;
+      }
+      .page-nav .page-nav-link {
+        display: flex;
+        max-width: 48%;
+        padding: 0.75rem 1rem;
+        border: solid color-mix(in srgb, currentColor 12%, transparent) 1px;
+        border-radius: 10px;
+        transition: all 150ms ease-in-out;
+        flex-direction: column;
+        row-gap: 0.125rem;
+        color: inherit;
+        text-decoration: none;
+      }
+      .page-nav .page-nav-link:hover {
+        border: solid color-mix(in srgb, currentColor 28%, transparent) 1px;
+        background-color: color-mix(in srgb, currentColor 4%, transparent);
+      }
+      .page-nav .page-nav-link .page-nav-label {
+        opacity: 0.55;
+        font-size: 0.6875rem;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+      }
+      .page-nav .page-nav-link .page-nav-title {
+        color: var(--primary);
+        font-size: 0.9375rem;
+        font-weight: 600;
+      }
+      .page-nav .page-nav-next {
+        margin-left: auto;
+        text-align: right;
+      }
+    </style>
+    <link href="https://docs.zonai.dev/authentication/oauth/" rel="canonical"/>
+    <meta property="og:url" content="https://docs.zonai.dev/authentication/oauth/"/>
+    <meta property="og:type" content="article"/>
+    <meta property="og:site_name" content="Zonai"/>
+    <meta name="twitter:card" content="summary_large_image"/>
+    <meta name="keywords" content="Dart, Flutter, backend, BaaS, SQLite, authentication, streaming, live queries, zonai_client, Zonai"/>
+    <meta property="og:image" content="https://docs.zonai.dev/images/og.png"/>
+    <!--$-->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <style>
+      .header {
+        display: flex;
+        height: 4rem;
+        padding: 0.25rem 1rem;
+        margin-left: auto;
+        margin-right: auto;
+        border-bottom-style: solid;
+        border-bottom-color: #0000000d;
+        border-bottom-width: 1px;
+        align-items: center;
+        column-gap: 1rem;
+      }
+      @media all and (min-width: 768px) {
+        .header {
+          padding-left: 2.5rem;
+          padding-right: 2.5rem;
+        }
+      }
+      .header .header-title {
+        display: inline-flex;
+        align-items: center;
+        column-gap: 0.75rem;
+        flex-basis: 17rem;
+      }
+      .header .header-title img {
+        width: auto;
+        height: 1.5rem;
+      }
+      .header .header-title span {
+        font-weight: 700;
+      }
+      .header .header-content {
+        display: flex;
+        justify-content: end;
+        flex-grow: 1;
+      }
+      .header .header-items {
+        display: flex;
+        column-gap: 0.25rem;
+      }
+    </style>
+    <style>
+      .sidebar-toggle-button {
+        display: none;
+        width: 2rem;
+        height: 2rem;
+        justify-content: center;
+        align-items: center;
+      }
+      @media all and (max-width: 1024px) {
+        [data-has-sidebar] .sidebar-toggle-button {
+          display: flex;
+        }
+      }
+    </style>
+    <style>
+      .search-trigger {
+        display: flex;
+        height: 2rem;
+        padding-left: 0.7rem;
+        padding-right: 0.7rem;
+        border: solid color-mix(in srgb, currentColor 15%, transparent) 1px;
+        border-radius: 8px;
+        opacity: 0.8;
+        cursor: pointer;
+        transition: all 150ms ease-in-out;
+        align-items: center;
+        column-gap: 0.5rem;
+        color: inherit;
+        font-size: 0.8125rem;
+        background-color: transparent;
+      }
+      .search-trigger:hover {
+        opacity: 1.0;
+        background-color: color-mix(in srgb, currentColor 6%, transparent);
+      }
+      .search-trigger .search-trigger-label {
+        display: none;
+      }
+      .search-trigger .search-trigger-keys {
+        display: none;
+        opacity: 0.7;
+        font-family: monospace;
+        font-size: 0.6875rem;
+      }
+      @media all and (min-width: 640px) {
+        .search-trigger {
+          width: 12rem;
+          justify-content: start;
+        }
+        .search-trigger .search-trigger-label {
+          display: block;
+        }
+        .search-trigger .search-trigger-keys {
+          display: block;
+          margin-left: auto;
+        }
+      }
+      .search-dialog {
+        display: none;
+        width: 100%;
+        height: 100%;
+        max-width: initial;
+        max-height: initial;
+        padding: 3rem 1rem;
+        margin: 0;
+        border: none;
+        overflow: hidden;
+        color: inherit;
+        background-color: transparent;
+      }
+      .search-dialog[open] {
+        display: flex;
+        justify-content: center;
+        align-items: start;
+      }
+      .search-dialog::backdrop {
+        background-color: rgba(15, 23, 42, .45);
+        backdrop-filter: blur(4px);
+      }
+      @media all and (min-width: 768px) {
+        .search-dialog {
+          padding: 6rem 1rem 3rem 1rem;
+        }
+      }
+      .search-panel {
+        display: flex;
+        width: 100%;
+        max-width: 40rem;
+        max-height: 100%;
+        border: solid color-mix(in srgb, currentColor 12%, transparent) 1px;
+        border-radius: 14px;
+        overflow: hidden;
+        flex-direction: column;
+        background-color: var(--background);
+        box-shadow: 0 24px 60px rgba(0,0,0,.28);
+      }
+      .search-field {
+        display: flex;
+        height: 3.5rem;
+        padding-left: 1rem;
+        padding-right: 1rem;
+        border-bottom-style: solid;
+        border-bottom-color: color-mix(in srgb, currentColor 12%, transparent);
+        border-bottom-width: 1px;
+        align-items: center;
+        column-gap: 0.75rem;
+      }
+      .search-field svg {
+        opacity: 0.5;
+        flex-shrink: 0;
+      }
+      .search-field input {
+        min-width: 0;
+        border: none;
+        outline-style: none;
+        flex-grow: 1;
+        color: inherit;
+        font-family: inherit;
+        font-size: 1rem;
+        background-color: transparent;
+      }
+      .search-dismiss {
+        padding: 0.25rem 0.5rem;
+        border: solid color-mix(in srgb, currentColor 18%, transparent) 1px;
+        border-radius: 6px;
+        opacity: 0.6;
+        cursor: pointer;
+        flex-shrink: 0;
+        color: inherit;
+        font-size: 0.6875rem;
+        background-color: transparent;
+      }
+      .search-dismiss:hover {
+        opacity: 1.0;
+      }
+      .search-results {
+        padding: 0.5rem;
+        overflow-y: auto;
+      }
+      .search-empty {
+        padding: 1.5rem;
+        opacity: 0.7;
+        text-align: center;
+        font-size: 0.875rem;
+      }
+      .search-empty .search-hint {
+        display: block;
+        margin-top: 0.5rem;
+        opacity: 0.8;
+        font-size: 0.8125rem;
+      }
+      .search-hit-list {
+        padding: 0;
+        margin: 0;
+        list-style-type: none;
+      }
+      .search-hit {
+        display: block;
+        padding: 0.625rem 0.875rem;
+        border-radius: 10px;
+        color: inherit;
+        text-decoration: none;
+      }
+      .search-hit[data-selected] {
+        background-color: color-mix(in srgb, currentColor 8%, transparent);
+      }
+      .search-hit .search-hit-crumb {
+        display: flex;
+        opacity: 0.6;
+        column-gap: 0.375rem;
+        font-size: 0.6875rem;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+      }
+      .search-hit .search-hit-crumb .search-hit-sep {
+        opacity: 0.5;
+      }
+      .search-hit .search-hit-heading {
+        margin-top: 0.125rem;
+        font-size: 0.9375rem;
+        font-weight: 600;
+      }
+      .search-hit .search-hit-snippet {
+        margin-top: 0.1875rem;
+        opacity: 0.72;
+        font-size: 0.8125rem;
+        line-height: 1.4em;
+      }
+      .search-hit mark {
+        padding-left: 1px;
+        padding-right: 1px;
+        border-radius: 3px;
+        color: var(--primary);
+        font-weight: 600;
+        background-color: color-mix(in srgb, currentColor 18%, transparent);
+      }
+      .search-footer {
+        display: flex;
+        padding: 0.625rem 1rem;
+        border-top-style: solid;
+        border-top-color: color-mix(in srgb, currentColor 12%, transparent);
+        border-top-width: 1px;
+        opacity: 0.55;
+        column-gap: 1rem;
+        font-size: 0.6875rem;
+      }
+      .search-footer kbd {
+        padding-left: 0.25rem;
+        padding-right: 0.25rem;
+        margin-right: 0.25rem;
+        border: solid color-mix(in srgb, currentColor 20%, transparent) 1px;
+        border-radius: 4px;
+        font-family: monospace;
+      }
+    </style>
+    <script id="theme-script">
+                  let userTheme = window.localStorage.getItem('jaspr:theme');
+                  if (userTheme != null) {
+                    document.documentElement.setAttribute('data-theme', userTheme);
+                  } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                    document.documentElement.setAttribute('data-theme', 'dark');
+                  } else {
+                    document.documentElement.setAttribute('data-theme', 'light');
+                  }
+                
+    </script>
+    <style>
+      .docs-sidebar {
+        position: relative;
+        padding: 0.75rem 0.75rem 2rem 0.5rem;
+        font-size: 0.875rem;
+        line-height: 1.25rem;
+      }
+      @media all and (min-width: 1024px) {
+        .docs-sidebar {
+          padding-top: 1rem;
+        }
+      }
+      .docs-sidebar .sidebar-close {
+        position: absolute;
+        top: 0.75rem;
+        right: 0.75rem;
+        border: unset;
+        cursor: pointer;
+        color: inherit;
+        background-color: transparent;
+      }
+      @media all and (min-width: 1024px) {
+        .docs-sidebar .sidebar-close {
+          display: none;
+        }
+      }
+      .docs-sidebar ul {
+        padding: 0;
+        margin: 0;
+        list-style-type: none;
+      }
+      .docs-sidebar .docs-sidebar-top {
+        margin-bottom: 0.5rem;
+      }
+      .docs-sidebar .docs-sidebar-link {
+        display: flex;
+        padding: 0.375rem 0.75rem;
+        margin-bottom: 1px;
+        border-radius: 0.375rem;
+        opacity: 0.75;
+        transition: all 150ms ease-in-out;
+        align-items: center;
+        column-gap: 0.5rem;
+        color: inherit;
+        text-decoration: none;
+      }
+      .docs-sidebar .docs-sidebar-link:hover {
+        opacity: 1.0;
+        background-color: color-mix(in srgb, currentColor 6%, transparent);
+      }
+      .docs-sidebar .docs-sidebar-link.active {
+        opacity: 1.0;
+        color: var(--primary);
+        font-weight: 600;
+        background-color: color-mix(in srgb, currentColor 14%, transparent);
+      }
+      .docs-sidebar .docs-sidebar-link span:first-child {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .docs-sidebar .docs-sidebar-badge {
+        padding-left: 0.3125rem;
+        padding-right: 0.3125rem;
+        border-radius: 999px;
+        flex-shrink: 0;
+        color: var(--primary);
+        font-size: 0.625rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+        background-color: color-mix(in srgb, currentColor 15%, transparent);
+      }
+      .docs-sidebar .docs-sidebar-group > ul {
+        padding-left: 0.5rem;
+        margin-left: 1.0625rem;
+        margin-bottom: 0.5rem;
+        border-left-style: solid;
+        border-left-color: color-mix(in srgb, currentColor 12%, transparent);
+        border-left-width: 1px;
+      }
+      .docs-sidebar .docs-sidebar-group[open] .docs-sidebar-chevron svg {
+        transform: rotate(90deg);
+      }
+      .docs-sidebar .docs-sidebar-summary {
+        display: flex;
+        padding: 0.4375rem 0.5rem;
+        border-radius: 0.375rem;
+        cursor: pointer;
+        user-select: none;
+        -webkit-user-select: none;
+        align-items: center;
+        column-gap: 0.5rem;
+        list-style-type: none;
+        font-weight: 600;
+      }
+      .docs-sidebar .docs-sidebar-summary::-webkit-details-marker {
+        display: none;
+      }
+      .docs-sidebar .docs-sidebar-summary:hover {
+        background-color: color-mix(in srgb, currentColor 6%, transparent);
+      }
+      .docs-sidebar .docs-sidebar-summary .docs-sidebar-icon {
+        display: flex;
+        opacity: 0.6;
+        flex-shrink: 0;
+      }
+      .docs-sidebar .docs-sidebar-summary .docs-sidebar-title {
+        flex-grow: 1;
+      }
+      .docs-sidebar .docs-sidebar-summary .docs-sidebar-chevron {
+        display: flex;
+        opacity: 0.45;
+      }
+      .docs-sidebar .docs-sidebar-summary .docs-sidebar-chevron svg {
+        transition: transform 150ms ease-in-out;
+      }
+    </style>
+    <style>
+      :root {
+        --primary: oklch(0.623 0.214 259.815);
+        --background: oklch(0.984 0.003 247.858);
+        --text: oklch(0.373 0.034 259.733);
+        --content-headings: oklch(0.21 0.034 264.665);
+        --content-lead: oklch(0.446 0.03 256.802);
+        --content-links: oklch(0.21 0.034 264.665);
+        --content-bold: oklch(0.21 0.034 264.665);
+        --content-counters: oklch(0.551 0.027 264.364);
+        --content-bullets: oklch(0.872 0.01 258.338);
+        --content-hr: oklch(0.928 0.006 264.531);
+        --content-quotes: oklch(0.21 0.034 264.665);
+        --content-quote-borders: oklch(0.928 0.006 264.531);
+        --content-captions: oklch(0.551 0.027 264.364);
+        --content-kbd: oklch(0.21 0.034 264.665);
+        --content-kbd-shadows: oklch(0.21 0.034 264.665);
+        --content-code: oklch(0.21 0.034 264.665);
+        --content-pre-code: oklch(0.928 0.006 264.531);
+        --content-pre-bg: oklch(0.278 0.033 256.848);
+        --content-th-borders: oklch(0.872 0.01 258.338);
+        --content-td-borders: oklch(0.928 0.006 264.531);
+      }
+      :root[data-theme="dark"] {
+        --primary: oklch(0.809 0.105 251.813);
+        --background: oklch(0.141 0.005 285.823);
+        --text: oklch(0.928 0.006 264.531);
+        --content-headings: white;
+        --content-lead: oklch(0.707 0.022 261.325);
+        --content-links: white;
+        --content-bold: white;
+        --content-counters: oklch(0.707 0.022 261.325);
+        --content-bullets: oklch(0.446 0.03 256.802);
+        --content-hr: oklch(0.373 0.034 259.733);
+        --content-quotes: oklch(0.967 0.003 264.542);
+        --content-quote-borders: oklch(0.373 0.034 259.733);
+        --content-captions: oklch(0.707 0.022 261.325);
+        --content-kbd: white;
+        --content-kbd-shadows: white;
+        --content-code: white;
+        --content-pre-code: oklch(0.872 0.01 258.338);
+        --content-pre-bg: rgb(0 0 0 / 50%);
+        --content-th-borders: oklch(0.446 0.03 256.802);
+        --content-td-borders: oklch(0.373 0.034 259.733);
+      }
+      *, :after, :before {
+        box-sizing: border-box;
+        border: solid #e5e7eb 0;
+      }
+      :host,html {
+        line-height: 1.5em;
+        -webkit-text-size-adjust: 100%;
+        -moz-tab-size: 4;
+        tab-size: 4;
+        font-feature-settings: normal;
+        font-variation-settings: normal;
+        -webkit-tap-highlight-color: transparent;
+      }
+      body {
+        margin: 0;
+        line-height: inherit;
+        -webkit-font-smoothing: antialiased;
+      }
+      hr {
+        height: 0;
+        border-top-style: solid;
+        border-top-width: 1px;
+        color: inherit;
+      }
+      a {
+        color: inherit;
+        text-decoration: inherit;
+      }
+      b, strong {
+        font-weight: bolder;
+      }
+      code, kbd, pre, samp {
+        font-size: 1em;
+        font-feature-settings: normal;
+        font-variation-settings: normal;
+      }
+      small {
+        font-size: 80%;
+      }
+      sub, sup {
+        position: relative;
+        font-size: 75%;
+        line-height: 0;
+        vertical-align: baseline;
+      }
+      sub {
+        position: relative;
+        bottom: -0.25em;
+      }
+      sup {
+        position: relative;
+        top: -0.5em;
+      }
+      table {
+        border: solid inherit;
+        text-indent: 0;
+        border-collapse: collapse;
+      }
+      button, input, optgroup, select, textarea {
+        padding: 0;
+        margin: 0;
+        color: inherit;
+        font-family: inherit;
+        font-size: 100%;
+        font-weight: inherit;
+        letter-spacing: inherit;
+        line-height: inherit;
+        font-feature-settings: inherit;
+        font-variation-settings: inherit;
+      }
+      button, select {
+        text-transform: none;
+      }
+      button, input[type=button], input[type=reset], input[type=submit] {
+        -webkit-appearance: button;
+        background-color: transparent;
+        background-image: none;
+      }
+      :-moz-focusring {
+        outline: auto;
+      }
+      :-moz-ui-invalid {
+        box-shadow: none;
+      }
+      progress {
+        vertical-align: baseline;
+      }
+      ::-webkit-inner-spin-button, ::-webkit-outer-spin-button {
+        height: auto;
+      }
+      [type=search] {
+        -webkit-appearance: textfield;
+        outline-offset: -2px;
+      }
+      ::-webkit-search-decoration {
+        -webkit-appearance: none;
+      }
+      ::-webkit-file-upload-button {
+        -webkit-appearance: button;
+        font: inherit;
+      }
+      summary {
+        display: list-item;
+      }
+      blockquote, dd, dl, figure, h1, h2, h3, h4, h5, h6, hr, p, pre {
+        margin: 0;
+      }
+      fieldset {
+        margin: 0;
+      }
+      fieldset, legend {
+        padding: 0;
+      }
+      menu, ol, ul {
+        padding: 0;
+        margin: 0;
+        list-style-type: none;
+      }
+      dialog {
+        padding: 0;
+      }
+      textarea {
+        resize: vertical;
+      }
+      input::placeholder, textarea::placeholder {
+        opacity: 1.0;
+        color: #9ca3af;
+      }
+      [role=button], button {
+        cursor: pointer;
+      }
+      :disabled {
+        cursor: default;
+      }
+      audio, canvas, embed, iframe, img, object, svg, video {
+        display: block;
+        vertical-align: middle;
+      }
+      img, video {
+        height: auto;
+        max-width: 100%;
+      }
+      :root {
+        --content-font: 'Open Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+        --content-code-font: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', 'Liberation Mono', 'Courier New', monospace;
+      }
+      :host,html {
+        font-family: var(--content-font);
+      }
+      code, kbd, pre, samp {
+        font-family: var(--content-code-font);
+      }
+      body {
+        color: var(--text);
+        background-color: var(--background);
+      }
+      .content {
+        color: var(--text);
+        font-size: 1rem;
+        line-height: 1.75em;
+      }
+      .content :where(a):not(:where([class~=not-content],[class~=not-content] *)) {
+        color: var(--content-links);
+        font-weight: 500;
+        text-decoration: underline;
+      }
+      .content :where(strong):not(:where([class~=not-content],[class~=not-content] *)) {
+        color: var(--content-bold);
+        font-weight: 600;
+      }
+      .content :where(a strong):not(:where([class~=not-content],[class~=not-content] *)) {
+        color: inherit;
+      }
+      .content :where(blockquote strong):not(:where([class~=not-content],[class~=not-content] *)) {
+        color: inherit;
+      }
+      .content :where(thead th strong):not(:where([class~=not-content],[class~=not-content] *)) {
+        color: inherit;
+      }
+      .content :where(ol):not(:where([class~=not-content],[class~=not-content] *)) {
+        list-style-type: decimal;
+      }
+      .content :where(ol[type="A"]):not(:where([class~=not-content],[class~=not-content] *)) {
+        list-style-type: upper-alpha;
+      }
+      .content :where(ol[type="a"]):not(:where([class~=not-content],[class~=not-content] *)) {
+        list-style-type: lower-alpha;
+      }
+      .content :where(ol[type="A" s]):not(:where([class~=not-content],[class~=not-content] *)) {
+        list-style-type: upper-alpha;
+      }
+      .content :where(ol[type="a" s]):not(:where([class~=not-content],[class~=not-content] *)) {
+        list-style-type: lower-alpha;
+      }
+      .content :where(ol[type="I"]):not(:where([class~=not-content],[class~=not-content] *)) {
+        list-style-type: upper-roman;
+      }
+      .content :where(ol[type="i"]):not(:where([class~=not-content],[class~=not-content] *)) {
+        list-style-type: lower-roman;
+      }
+      .content :where(ol[type="I" s]):not(:where([class~=not-content],[class~=not-content] *)) {
+        list-style-type: upper-roman;
+      }
+      .content :where(ol[type="i" s]):not(:where([class~=not-content],[class~=not-content] *)) {
+        list-style-type: lower-roman;
+      }
+      .content :where(ol[type="1"]):not(:where([class~=not-content],[class~=not-content] *)) {
+        list-style-type: decimal;
+      }
+      .content :where(ul):not(:where([class~=not-content],[class~=not-content] *)) {
+        list-style-type: disc;
+      }
+      .content :where(ol > li::marker):not(:where([class~=not-content],[class~=not-content] *)) {
+        color: var(--content-counters);
+        font-weight: 400;
+      }
+      .content :where(ul > li::marker):not(:where([class~=not-content],[class~=not-content] *)) {
+        color: var(--content-bullets);
+      }
+      .content :where(dt):not(:where([class~=not-content],[class~=not-content] *)) {
+        color: var(--content-headings);
+        font-weight: 600;
+      }
+      .content :where(hr):not(:where([class~=not-content],[class~=not-content] *)) {
+        border: solid var(--content-hr);
+        border-top-width: 1px;
+      }
+      .content :where(blockquote):not(:where([class~=not-content],[class~=not-content] *)) {
+        color: var(--content-quotes);
+        font-weight: 500;
+        font-style: italic;
+        border-inline-start-width: 0.25rem;
+        border-inline-start-color: var(--content-quote-borders);
+        quotes: "\201C""\201D""\2018""\2019";
+      }
+      .content :where(blockquote p:first-of-type::before):not(:where([class~=not-content],[class~=not-content] *)) {
+        content: open-quote;
+      }
+      .content :where(blockquote p:last-of-type::after):not(:where([class~=not-content],[class~=not-content] *)) {
+        content: close-quote;
+      }
+      .content :where(h1):not(:where([class~=not-content],[class~=not-content] *)) {
+        color: var(--content-headings);
+        font-weight: 800;
+      }
+      .content :where(h1 strong):not(:where([class~=not-content],[class~=not-content] *)) {
+        color: inherit;
+        font-weight: 900;
+      }
+      .content :where(h2):not(:where([class~=not-content],[class~=not-content] *)) {
+        color: var(--content-headings);
+        font-weight: 700;
+      }
+      .content :where(h2 strong):not(:where([class~=not-content],[class~=not-content] *)) {
+        color: inherit;
+        font-weight: 800;
+      }
+      .content :where(h3):not(:where([class~=not-content],[class~=not-content] *)) {
+        color: var(--content-headings);
+        font-weight: 600;
+      }
+      .content :where(h3 strong):not(:where([class~=not-content],[class~=not-content] *)) {
+        color: inherit;
+        font-weight: 700;
+      }
+      .content :where(h4):not(:where([class~=not-content],[class~=not-content] *)) {
+        color: var(--content-headings);
+        font-weight: 600;
+      }
+      .content :where(h4 strong):not(:where([class~=not-content],[class~=not-content] *)) {
+        color: inherit;
+        font-weight: 700;
+      }
+      .content :where(picture):not(:where([class~=not-content],[class~=not-content] *)) {
+        display: block;
+      }
+      .content :where(kbd):not(:where([class~=not-content],[class~=not-content] *)) {
+        color: var(--content-kbd);
+        font-family: inherit;
+        font-weight: 500;
+      }
+      .content :where(code):not(:where([class~=not-content],[class~=not-content] *)) {
+        color: var(--content-code);
+        font-weight: 600;
+      }
+      .content :where(code::before):not(:where([class~=not-content],[class~=not-content] *)) {
+        content: "`";
+      }
+      .content :where(code::after):not(:where([class~=not-content],[class~=not-content] *)) {
+        content: "`";
+      }
+      .content :where(a code):not(:where([class~=not-content],[class~=not-content] *)) {
+        color: inherit;
+      }
+      .content :where(h1 code):not(:where([class~=not-content],[class~=not-content] *)) {
+        color: inherit;
+      }
+      .content :where(h2 code):not(:where([class~=not-content],[class~=not-content] *)) {
+        color: inherit;
+      }
+      .content :where(h3 code):not(:where([class~=not-content],[class~=not-content] *)) {
+        color: inherit;
+      }
+      .content :where(h4 code):not(:where([class~=not-content],[class~=not-content] *)) {
+        color: inherit;
+      }
+      .content :where(blockquote code):not(:where([class~=not-content],[class~=not-content] *)) {
+        color: inherit;
+      }
+      .content :where(thead th code):not(:where([class~=not-content],[class~=not-content] *)) {
+        color: inherit;
+      }
+      .content :where(pre):not(:where([class~=not-content],[class~=not-content] *)) {
+        overflow-x: auto;
+        color: var(--content-pre-code);
+        font-weight: 400;
+        background-color: var(--content-pre-bg);
+      }
+      .content :where(pre code):not(:where([class~=not-content],[class~=not-content] *)) {
+        padding: 0;
+        border: solid 0;
+        border-radius: 0;
+        color: inherit;
+        font-size: inherit;
+        font-weight: inherit;
+        line-height: inherit;
+        background-color: transparent;
+      }
+      .content :where(pre code::before):not(:where([class~=not-content],[class~=not-content] *)) {
+        content: none;
+      }
+      .content :where(pre code::after):not(:where([class~=not-content],[class~=not-content] *)) {
+        content: none;
+      }
+      .content :where(table):not(:where([class~=not-content],[class~=not-content] *)) {
+        width: 100%;
+        margin-top: 2em;
+        margin-bottom: 2em;
+        table-layout: auto;
+      }
+      .content :where(thead):not(:where([class~=not-content],[class~=not-content] *)) {
+        border-bottom-style: solid;
+        border-bottom-color: var(--content-th-borders);
+        border-bottom-width: 1px;
+      }
+      .content :where(thead th):not(:where([class~=not-content],[class~=not-content] *)) {
+        color: var(--content-headings);
+        font-weight: 600;
+        vertical-align: bottom;
+      }
+      .content :where(tbody tr):not(:where([class~=not-content],[class~=not-content] *)) {
+        border-bottom-style: solid;
+        border-bottom-color: var(--content-td-borders);
+        border-bottom-width: 1px;
+      }
+      .content :where(tbody tr:last-child):not(:where([class~=not-content],[class~=not-content] *)) {
+        border-bottom-style: solid;
+        border-bottom-width: 0;
+      }
+      .content :where(tbody td):not(:where([class~=not-content],[class~=not-content] *)) {
+        vertical-align: baseline;
+      }
+      .content :where(tfoot):not(:where([class~=not-content],[class~=not-content] *)) {
+        border-top-style: solid;
+        border-top-color: var(--content-th-borders);
+        border-top-width: 1px;
+      }
+      .content :where(tfoot td):not(:where([class~=not-content],[class~=not-content] *)) {
+        vertical-align: top;
+      }
+      .content :where(th, td):not(:where([class~=not-content],[class~=not-content] *)) {
+        text-align: start;
+      }
+      .content :where(figcaption):not(:where([class~=not-content],[class~=not-content] *)) {
+        color: var(--content-captions);
+      }
+      .content :where(p):not(:where([class~=not-content],[class~=not-content] *)) {
+        margin-top: 1.25em;
+        margin-bottom: 1.25em;
+      }
+      .content :where(blockquote):not(:where([class~=not-content],[class~=not-content] *)) {
+        padding-left: 1em;
+        margin-top: 1.6em;
+        margin-bottom: 1.6em;
+      }
+      .content :where(h1):not(:where([class~=not-content],[class~=not-content] *)) {
+        margin-top: 0;
+        margin-bottom: 0.88em;
+        font-size: 2.25em;
+        line-height: 1.11em;
+      }
+      .content :where(h2):not(:where([class~=not-content],[class~=not-content] *)) {
+        margin-top: 1.5em;
+        margin-bottom: 1em;
+        font-size: 1.5em;
+        line-height: 1.33em;
+      }
+      .content :where(h3):not(:where([class~=not-content],[class~=not-content] *)) {
+        margin-top: 1.6em;
+        margin-bottom: 0.6em;
+        font-size: 1.25em;
+        line-height: 1.6em;
+      }
+      .content :where(h4):not(:where([class~=not-content],[class~=not-content] *)) {
+        margin-top: 2em;
+        margin-bottom: 0.5em;
+        line-height: 1.5em;
+      }
+      .content :where(img):not(:where([class~=not-content],[class~=not-content] *)) {
+        margin-top: 2em;
+        margin-bottom: 2em;
+      }
+      .content :where(picture):not(:where([class~=not-content],[class~=not-content] *)) {
+        margin-top: 2em;
+        margin-bottom: 2em;
+      }
+      .content :where(picture > img):not(:where([class~=not-content],[class~=not-content] *)) {
+        margin-top: 0;
+        margin-bottom: 0;
+      }
+      .content :where(video):not(:where([class~=not-content],[class~=not-content] *)) {
+        margin-top: 2em;
+        margin-bottom: 2em;
+      }
+      .content :where(kbd):not(:where([class~=not-content],[class~=not-content] *)) {
+        padding: 0.1875rem 0.375rem 0.1875rem 0.375rem;
+        border-radius: 0.3125rem;
+        font-size: 0.875em;
+      }
+      .content :where(code):not(:where([class~=not-content],[class~=not-content] *)) {
+        font-size: 0.875em;
+      }
+      .content :where(h2 code):not(:where([class~=not-content],[class~=not-content] *)) {
+        font-size: 0.875em;
+      }
+      .content :where(h3 code):not(:where([class~=not-content],[class~=not-content] *)) {
+        font-size: 0.9em;
+      }
+      .content :where(pre):not(:where([class~=not-content],[class~=not-content] *)) {
+        padding: 0.857em 1.14em 0.857em 1.14em;
+        margin-top: 1.71em;
+        margin-bottom: 1.71em;
+        border-radius: 0.375rem;
+        font-size: 0.875em;
+        line-height: 1.71em;
+      }
+      .content :where(ol):not(:where([class~=not-content],[class~=not-content] *)) {
+        padding-left: 1.625em;
+        margin-top: 1.25em;
+        margin-bottom: 1.25em;
+      }
+      .content :where(ul):not(:where([class~=not-content],[class~=not-content] *)) {
+        padding-left: 1.625em;
+        margin-top: 1.25em;
+        margin-bottom: 1.25em;
+      }
+      .content :where(li):not(:where([class~=not-content],[class~=not-content] *)) {
+        margin-top: 0.5em;
+        margin-bottom: 0.5em;
+      }
+      .content :where(ol > li):not(:where([class~=not-content],[class~=not-content] *)) {
+        padding-left: 0.375em;
+      }
+      .content :where(ul > li):not(:where([class~=not-content],[class~=not-content] *)) {
+        padding-left: 0.375em;
+      }
+      .content :where(> ul > li p):not(:where([class~=not-content],[class~=not-content] *)) {
+        margin-top: 0.75em;
+        margin-bottom: 0.75em;
+      }
+      .content :where(> ul > li > p:first-child):not(:where([class~=not-content],[class~=not-content] *)) {
+        margin-top: 1.25em;
+      }
+      .content :where(> ul > li > p:last-child):not(:where([class~=not-content],[class~=not-content] *)) {
+        margin-bottom: 1.25em;
+      }
+      .content :where(> ol > li > p:first-child):not(:where([class~=not-content],[class~=not-content] *)) {
+        margin-top: 1.25em;
+      }
+      .content :where(> ol > li > p:last-child):not(:where([class~=not-content],[class~=not-content] *)) {
+        margin-bottom: 1.25em;
+      }
+      .content :where(ul ul, ul ol, ol ul, ol ol):not(:where([class~=not-content],[class~=not-content] *)) {
+        margin-top: 0.75em;
+        margin-bottom: 0.75em;
+      }
+      .content :where(dl):not(:where([class~=not-content],[class~=not-content] *)) {
+        margin-top: 1.25em;
+        margin-bottom: 1.25em;
+      }
+      .content :where(dt):not(:where([class~=not-content],[class~=not-content] *)) {
+        margin-top: 1.25em;
+      }
+      .content :where(dd):not(:where([class~=not-content],[class~=not-content] *)) {
+        padding-left: 1.625em;
+        margin-top: 0.5em;
+      }
+      .content :where(hr):not(:where([class~=not-content],[class~=not-content] *)) {
+        margin-top: 3em;
+        margin-bottom: 3em;
+      }
+      .content :where(hr + *):not(:where([class~=not-content],[class~=not-content] *)) {
+        margin-top: 0;
+      }
+      .content :where(h2 + *):not(:where([class~=not-content],[class~=not-content] *)) {
+        margin-top: 0;
+      }
+      .content :where(h3 + *):not(:where([class~=not-content],[class~=not-content] *)) {
+        margin-top: 0;
+      }
+      .content :where(h4 + *):not(:where([class~=not-content],[class~=not-content] *)) {
+        margin-top: 0;
+      }
+      .content :where(table):not(:where([class~=not-content],[class~=not-content] *)) {
+        font-size: 0.875em;
+        line-height: 1.71em;
+      }
+      .content :where(thead th):not(:where([class~=not-content],[class~=not-content] *)) {
+        padding-left: 0.57em;
+        padding-right: 0.57em;
+        padding-bottom: 0.57em;
+      }
+      .content :where(thead th:first-child):not(:where([class~=not-content],[class~=not-content] *)) {
+        padding-left: 0;
+      }
+      .content :where(thead th:last-child):not(:where([class~=not-content],[class~=not-content] *)) {
+        padding-right: 0;
+      }
+      .content :where(tbody td, tfoot td):not(:where([class~=not-content],[class~=not-content] *)) {
+        padding: 0.57em 0.57em 0.57em 0.57em;
+      }
+      .content :where(tbody td:first-child, tfoot td:first-child):not(:where([class~=not-content],[class~=not-content] *)) {
+        padding-left: 0;
+      }
+      .content :where(tbody td:last-child, tfoot td:last-child):not(:where([class~=not-content],[class~=not-content] *)) {
+        padding-right: 0;
+      }
+      .content :where(figure):not(:where([class~=not-content],[class~=not-content] *)) {
+        margin-top: 2em;
+        margin-bottom: 2em;
+      }
+      .content :where(figure > *):not(:where([class~=not-content],[class~=not-content] *)) {
+        margin-top: 0;
+        margin-bottom: 0;
+      }
+      .content :where(figcaption):not(:where([class~=not-content],[class~=not-content] *)) {
+        margin-top: 0.857em;
+        font-size: 0.875em;
+        line-height: 1.42em;
+      }
+      .content :where(> :first-child):not(:where([class~=not-content],[class~=not-content] *)) {
+        margin-top: 0;
+      }
+      .content :where(> :last-child):not(:where([class~=not-content],[class~=not-content] *)) {
+        margin-bottom: 0;
+      }
+    </style>
+    <style>
+      :is(h1, h2, h3, h4, h5, h6)[anchor="true"] {
+        display: flex;
+        align-items: baseline;
+        column-gap: 0.5rem;
+      }
+      :is(h1, h2, h3, h4, h5, h6)[anchor="true"] > a {
+        opacity: 0.0;
+        transition: opacity 300ms;
+        font-size: 0.8em;
+        text-decoration: none;
+      }
+      :is(h1, h2, h3, h4, h5, h6)[anchor="true"]:hover > a {
+        opacity: 0.8;
+      }
+      :is(h1, h2, h3, h4, h5, h6)[anchor="true"] > a:hover {
+        opacity: 1.0;
+      }
+    </style>
+    <!--/-->
+    <script src="main.client.dart.js" defer></script>
+    <style>
+      .callout {
+        display: flex;
+        padding: 1rem 1.25rem;
+        margin-bottom: 0.75rem;
+        border: solid 1px;
+        border-radius: 0.75rem;
+        column-gap: 1rem;
+      }
+      .callout span:first-child {
+        padding-top: 0.25rem;
+        flex-shrink: 0;
+      }
+      .callout span:last-child > p {
+        margin: 0;
+      }
+      .callout.callout-info {
+        border: solid rgba(14,165,233,.2);
+        color: rgb(3 105 161);
+        background-color: rgba(186, 230, 253, .1);
+      }
+      .callout.callout-warning {
+        border: solid rgba(234,179,8,.2);
+        color: rgb(161 98 7);
+        background-color: hsla(53,98%,77%,.1);
+      }
+      .callout.callout-error {
+        border: solid rgba(239,68,68,.2);
+        color: rgb(185 28 28);
+        background-color: hsla(0,96%,89%,.1);
+      }
+      .callout.callout-success {
+        border: solid rgba(34,197,94,.2);
+        color: oklch(0.527 0.154 150.069);
+        background-color: rgba(187,247,208,.1);
+      }
+      [data-theme="dark"] .callout.callout-info {
+        border: solid rgba(14,165,233,.5);
+        color: inherit;
+        background-color: rgba(14,165,233,.1);
+      }
+      [data-theme="dark"] .callout.callout-warning {
+        border: solid rgba(234,179,8,.5);
+        color: inherit;
+        background-color: rgba(234,179,8,.1);
+      }
+      [data-theme="dark"] .callout.callout-error {
+        border: solid rgba(239,68,68,.5);
+        color: inherit;
+        background-color: rgba(239,68,68,.1);
+      }
+      [data-theme="dark"] .callout.callout-success {
+        border: solid rgba(34,197,94,.5);
+        color: inherit;
+        background-color: rgba(34,197,94,.1);
+      }
+      .code-block {
+        position: relative;
+      }
+      .code-block button {
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+        z-index: 10;
+        width: 1.25rem;
+        height: 1.25rem;
+        opacity: 0.0;
+        color: white;
+      }
+      .code-block:hover button {
+        opacity: 0.75;
+      }
+      figure.image {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+      .theme-toggle {
+        display: flex;
+        padding: 0.7rem;
+        border: unset;
+        border-radius: 8px;
+        outline: unset;
+        align-items: center;
+        background-color: transparent;
+      }
+      .theme-toggle:hover {
+        background-color: color-mix(in srgb, currentColor 5%, transparent);
+      }
+      figure.image.zoomable img {
+        cursor: zoom-in;
+      }
+      dialog.zoom-modal {
+        width: 100vw;
+        height: 100vh;
+        max-width: initial;
+        max-height: initial;
+        padding: 0;
+        margin: 0;
+        border: none;
+        outline-style: none;
+        overflow: hidden;
+        background-color: transparent;
+      }
+      dialog.zoom-modal .image-wrapper {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        background-color: var(--background);
+      }
+      dialog.zoom-modal img {
+        position: absolute;
+        cursor: zoom-out;
+        transition: transform 300ms;
+        transform-origin: top left;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="docs">
+      <div class="header-container" data-has-sidebar>
+        <header class="header">
+          <!--@jaspr_content:sidebar_toggle_button-->
+          <button class="sidebar-toggle-button">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" x2="20" y1="12" y2="12"></line><line x1="4" x2="20" y1="6" y2="6"></line><line x1="4" x2="20" y1="18" y2="18"></line></svg>
+            
+          </button>
+          <!--/@jaspr_content:sidebar_toggle_button-->
+          <a class="header-title" href="/"><img alt="Logo" src="/images/logo.svg"/><span>Zonai</span></a>
+          <div class="header-content">
+            <div class="header-items">
+              <!--@search-->
+              <button class="search-trigger" aria-label="Search the documentation" type="button">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                <span class="search-trigger-label">Search</span>
+                <span class="search-trigger-keys">⌘K</span>
+              </button>
+              <!--/@search-->
+              <a class="header-home-link" aria-label="Zonai home" href="https://zonai.dev">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V20a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1V9.5"/></svg>
+                <span class="header-home-label">zonai.dev</span>
+              </a>
+              <a class="header-icon-link" aria-label="Zonai on GitHub" target="_blank" rel="noreferrer" href="https://github.com/mrgnhnt96/zonai">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .5C5.37.5 0 5.87 0 12.5c0 5.3 3.44 9.8 8.2 11.39.6.11.82-.26.82-.58 l-.01-2.05c-3.34.73-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.09-.75.08-.73.08-.73 1.2.08 1.84 1.24 1.84 1.24 1.07 1.83 2.81 1.3 3.5.99.11-.78.42-1.3.76-1.6-2.67-.3-5.47-1.33-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.13-.3-.54-1.52.11-3.18 0 0 1.01-.32 3.3 1.23a11.5 11.5 0 0 1 6.005 0c2.28-1.55 3.29-1.23 3.29-1.23.66 1.66.25 2.88.12 3.18.77.84 1.24 1.91 1.24 3.22 0 4.61-2.81 5.62-5.49 5.92.43.37.81 1.1.81 2.22l-.01 3.29c0 .32.21.7.82.58A12 12 0 0 0 24 12.5C24 5.87 18.63.5 12 .5z"/></svg>
+              </a>
+              <!--@jaspr_content:theme_toggle-->
+              <button class="theme-toggle" style="visibility: hidden" aria-label="Theme Toggle">
+                <span><svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" width="20px" height="20px"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"></path></svg></span>
+                <span style="display: none"><svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" width="20px" height="20px"><circle cx="12" cy="12" r="4"></circle><path d="M12 4h.01"></path><path d="M20 12h.01"></path><path d="M12 20h.01"></path><path d="M4 12h.01"></path><path d="M17.657 6.343h.01"></path><path d="M17.657 17.657h.01"></path><path d="M6.343 17.657h.01"></path><path d="M6.343 6.343h.01"></path></svg></span>
+              </button>
+              <!--/@jaspr_content:theme_toggle-->
+            </div>
+          </div>
+        </header>
+      </div>
+      <div class="main-container">
+        <div class="sidebar-barrier" role="button"></div>
+        <div class="sidebar-container">
+          <nav class="docs-sidebar" aria-label="Documentation">
+            <button class="sidebar-close" aria-label="Close navigation">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+            </button>
+            <ul class="docs-sidebar-top"><li><a class="docs-sidebar-link" href="/"><span>Introduction</span></a></li></ul>
+            <details class="docs-sidebar-group">
+              <summary class="docs-sidebar-summary">
+                <span class="docs-sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></svg></span>
+                <span class="docs-sidebar-title">Start Here</span>
+                <span class="docs-sidebar-chevron"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></span>
+              </summary>
+              <ul>
+                <li><a class="docs-sidebar-link" href="/getting-started/installation"><span>Installation</span></a></li>
+                <li><a class="docs-sidebar-link" href="/getting-started/quick-start"><span>Quick Start</span></a></li>
+                <li>
+                  <a class="docs-sidebar-link" href="/getting-started/project-structure"><span>Project Structure</span></a>
+                </li>
+              </ul>
+            </details>
+            <details class="docs-sidebar-group">
+              <summary class="docs-sidebar-summary">
+                <span class="docs-sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg></span>
+                <span class="docs-sidebar-title">Core Concepts</span>
+                <span class="docs-sidebar-chevron"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></span>
+              </summary>
+              <ul>
+                <li>
+                  <a class="docs-sidebar-link" href="/core-concepts/request-pipeline"><span>How a Request is Processed</span></a>
+                </li>
+                <li><a class="docs-sidebar-link" href="/core-concepts/workers"><span>Workers</span></a></li>
+                <li><a class="docs-sidebar-link" href="/core-concepts/config-flavors"><span>Config Flavors</span></a></li>
+              </ul>
+            </details>
+            <details class="docs-sidebar-group">
+              <summary class="docs-sidebar-summary">
+                <span class="docs-sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" x2="4" y1="21" y2="14"/><line x1="4" x2="4" y1="10" y2="3"/><line x1="12" x2="12" y1="21" y2="12"/><line x1="12" x2="12" y1="8" y2="3"/><line x1="20" x2="20" y1="21" y2="16"/><line x1="20" x2="20" y1="12" y2="3"/><line x1="2" x2="6" y1="14" y2="14"/><line x1="10" x2="14" y1="8" y2="8"/><line x1="18" x2="22" y1="16" y2="16"/></svg></span>
+                <span class="docs-sidebar-title">Configuration</span>
+                <span class="docs-sidebar-chevron"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></span>
+              </summary>
+              <ul>
+                <li><a class="docs-sidebar-link" href="/configuration/zonai-yaml"><span>zonai.yaml Reference</span></a></li>
+                <li><a class="docs-sidebar-link" href="/configuration/app-config"><span>App Config</span></a></li>
+                <li>
+                  <a class="docs-sidebar-link" href="/configuration/environment-variables"><span>Environment Variables</span></a>
+                </li>
+              </ul>
+            </details>
+            <details class="docs-sidebar-group">
+              <summary class="docs-sidebar-summary">
+                <span class="docs-sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18"/><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M3 15h18"/></svg></span>
+                <span class="docs-sidebar-title">Data Modeling</span>
+                <span class="docs-sidebar-chevron"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></span>
+              </summary>
+              <ul>
+                <li><a class="docs-sidebar-link" href="/schemas/defining-tables"><span>Defining Tables</span></a></li>
+                <li><a class="docs-sidebar-link" href="/schemas/auth-tables"><span>Auth Tables</span></a></li>
+                <li><a class="docs-sidebar-link" href="/schemas/photo-tables"><span>Photo Tables</span></a></li>
+                <li>
+                  <a class="docs-sidebar-link" href="/database/migrations-overview"><span>Migrations Overview</span></a>
+                </li>
+                <li>
+                  <a class="docs-sidebar-link" href="/database/generating-migrations"><span>Generating Migrations</span></a>
+                </li>
+                <li>
+                  <a class="docs-sidebar-link" href="/database/applying-migrations"><span>Applying Migrations</span></a>
+                </li>
+              </ul>
+            </details>
+            <details class="docs-sidebar-group">
+              <summary class="docs-sidebar-summary">
+                <span class="docs-sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></svg></span>
+                <span class="docs-sidebar-title">Querying Data</span>
+                <span class="docs-sidebar-chevron"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></span>
+              </summary>
+              <ul>
+                <li><a class="docs-sidebar-link" href="/operations/overview"><span>Operations Overview</span></a></li>
+                <li>
+                  <a class="docs-sidebar-link" href="/operations/default-operations"><span>Default Operations</span></a>
+                </li>
+                <li><a class="docs-sidebar-link" href="/operations/views"><span>Views</span></a></li>
+                <li>
+                  <a class="docs-sidebar-link" href="/operations/streaming"><span>Live Queries</span><span class="docs-sidebar-badge">live</span></a>
+                </li>
+                <li><a class="docs-sidebar-link" href="/operations/auth-operations"><span>Auth Operations</span></a></li>
+                <li><a class="docs-sidebar-link" href="/api/openapi-spec"><span>OpenAPI Specification</span></a></li>
+              </ul>
+            </details>
+            <details class="docs-sidebar-group">
+              <summary class="docs-sidebar-summary">
+                <span class="docs-sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/><path d="M9 12h12"/></svg></span>
+                <span class="docs-sidebar-title">Dashboard</span>
+                <span class="docs-sidebar-chevron"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></span>
+              </summary>
+              <ul>
+                <li><a class="docs-sidebar-link" href="/dashboard/overview"><span>Overview</span></a></li>
+                <li><a class="docs-sidebar-link" href="/dashboard/metrics"><span>Metrics &amp; Cron Jobs</span></a></li>
+                <li>
+                  <a class="docs-sidebar-link" href="/dashboard/table-editor"><span>Browsing &amp; Editing Data</span></a>
+                </li>
+                <li><a class="docs-sidebar-link" href="/dashboard/branding"><span>Branding</span></a></li>
+              </ul>
+            </details>
+            <details class="docs-sidebar-group">
+              <summary class="docs-sidebar-summary">
+                <span class="docs-sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg></span>
+                <span class="docs-sidebar-title">Rules &amp; Authorization</span>
+                <span class="docs-sidebar-chevron"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></span>
+              </summary>
+              <ul>
+                <li><a class="docs-sidebar-link" href="/rules/overview"><span>Rules Overview</span></a></li>
+                <li><a class="docs-sidebar-link" href="/rules/table-rules"><span>Table Rules</span></a></li>
+                <li><a class="docs-sidebar-link" href="/rules/row-rules"><span>Row Rules</span></a></li>
+                <li><a class="docs-sidebar-link" href="/rules/auth-rules"><span>Auth Rules</span></a></li>
+                <li><a class="docs-sidebar-link" href="/rules/photo-rules"><span>Photo Rules</span></a></li>
+                <li><a class="docs-sidebar-link" href="/rules/jwt-claims"><span>JWT Claims</span></a></li>
+              </ul>
+            </details>
+            <details class="docs-sidebar-group" open>
+              <summary class="docs-sidebar-summary">
+                <span class="docs-sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15.5 7.5 2.3 2.3a1 1 0 0 0 1.4 0l2.1-2.1a1 1 0 0 0 0-1.4L19 4"/><path d="m21 2-9.6 9.6"/><circle cx="7.5" cy="15.5" r="5.5"/></svg></span>
+                <span class="docs-sidebar-title">Authentication</span>
+                <span class="docs-sidebar-chevron"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></span>
+              </summary>
+              <ul>
+                <li><a class="docs-sidebar-link" href="/authentication/overview"><span>Overview</span></a></li>
+                <li><a class="docs-sidebar-link" href="/authentication/password-auth"><span>Password Auth</span></a></li>
+                <li><a class="docs-sidebar-link" href="/authentication/otp-auth"><span>OTP Auth</span></a></li>
+                <li><a class="docs-sidebar-link" href="/authentication/magic-link-auth"><span>Magic Link Auth</span></a></li>
+                <li>
+                  <a class="docs-sidebar-link active" aria-current="page" href="/authentication/oauth"><span>OAuth</span></a>
+                </li>
+                <li>
+                  <a class="docs-sidebar-link" href="/authentication/external-idp"><span>External Identity Providers</span></a>
+                </li>
+                <li>
+                  <a class="docs-sidebar-link" href="/authentication/external-idp-supabase"><span>Supabase Auth as an IdP</span></a>
+                </li>
+                <li>
+                  <a class="docs-sidebar-link" href="/authentication/session-management"><span>Session Management</span></a>
+                </li>
+                <li><a class="docs-sidebar-link" href="/authentication/admin-accounts"><span>Admin Accounts</span></a></li>
+              </ul>
+            </details>
+            <details class="docs-sidebar-group">
+              <summary class="docs-sidebar-summary">
+                <span class="docs-sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22v-5"/><path d="M9 8V2"/><path d="M15 8V2"/><path d="M18 8v5a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V8Z"/></svg></span>
+                <span class="docs-sidebar-title">Extensions &amp; Hooks</span>
+                <span class="docs-sidebar-chevron"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></span>
+              </summary>
+              <ul>
+                <li><a class="docs-sidebar-link" href="/extensions/overview"><span>Overview</span></a></li>
+                <li><a class="docs-sidebar-link" href="/extensions/create-hooks"><span>Create Hooks</span></a></li>
+                <li><a class="docs-sidebar-link" href="/extensions/update-hooks"><span>Update Hooks</span></a></li>
+                <li><a class="docs-sidebar-link" href="/extensions/delete-hooks"><span>Delete Hooks</span></a></li>
+                <li><a class="docs-sidebar-link" href="/extensions/auth-hooks"><span>Auth Hooks</span></a></li>
+                <li><a class="docs-sidebar-link" href="/extensions/side-effects-get"><span>Side Effects: get</span></a></li>
+                <li>
+                  <a class="docs-sidebar-link" href="/extensions/side-effects-mutate"><span>Side Effects: mutate</span></a>
+                </li>
+                <li>
+                  <a class="docs-sidebar-link" href="/extensions/side-effects-email"><span>Side Effects: email</span></a>
+                </li>
+                <li>
+                  <a class="docs-sidebar-link" href="/extensions/side-effects-push"><span>Side Effects: push</span></a>
+                </li>
+              </ul>
+            </details>
+            <details class="docs-sidebar-group">
+              <summary class="docs-sidebar-summary">
+                <span class="docs-sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span>
+                <span class="docs-sidebar-title">Background Jobs</span>
+                <span class="docs-sidebar-chevron"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></span>
+              </summary>
+              <ul>
+                <li><a class="docs-sidebar-link" href="/cron-jobs/overview"><span>Overview</span></a></li>
+                <li><a class="docs-sidebar-link" href="/cron-jobs/defining-a-job"><span>Defining a Job</span></a></li>
+                <li><a class="docs-sidebar-link" href="/cron-jobs/catch-up-logic"><span>Catch-Up Logic</span></a></li>
+                <li><a class="docs-sidebar-link" href="/cron-jobs/side-effects"><span>Side Effects</span></a></li>
+                <li><a class="docs-sidebar-link" href="/cron-jobs/running-manually"><span>Running Manually</span></a></li>
+              </ul>
+            </details>
+            <details class="docs-sidebar-group">
+              <summary class="docs-sidebar-summary">
+                <span class="docs-sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg></span>
+                <span class="docs-sidebar-title">Email</span>
+                <span class="docs-sidebar-chevron"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></span>
+              </summary>
+              <ul>
+                <li><a class="docs-sidebar-link" href="/email/smtp-setup"><span>SMTP Setup</span></a></li>
+                <li><a class="docs-sidebar-link" href="/email/built-in-templates"><span>Built-in Templates</span></a></li>
+                <li><a class="docs-sidebar-link" href="/email/custom-templates"><span>Custom Templates</span></a></li>
+                <li><a class="docs-sidebar-link" href="/email/testing-locally"><span>Testing Locally</span></a></li>
+              </ul>
+            </details>
+            <details class="docs-sidebar-group">
+              <summary class="docs-sidebar-summary">
+                <span class="docs-sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/></svg></span>
+                <span class="docs-sidebar-title">Push Notifications</span>
+                <span class="docs-sidebar-chevron"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></span>
+              </summary>
+              <ul>
+                <li><a class="docs-sidebar-link" href="/push/overview"><span>Overview</span></a></li>
+                <li><a class="docs-sidebar-link" href="/push/device-tokens"><span>Device Tokens</span></a></li>
+                <li><a class="docs-sidebar-link" href="/push/configuration"><span>Configuration</span></a></li>
+                <li><a class="docs-sidebar-link" href="/push/sending"><span>Sending</span></a></li>
+                <li><a class="docs-sidebar-link" href="/push/dead-tokens"><span>Dead Tokens</span></a></li>
+                <li><a class="docs-sidebar-link" href="/push/delivery-guarantees"><span>Delivery Guarantees</span></a></li>
+                <li><a class="docs-sidebar-link" href="/push/testing-locally"><span>Testing Locally</span></a></li>
+              </ul>
+            </details>
+            <details class="docs-sidebar-group">
+              <summary class="docs-sidebar-summary">
+                <span class="docs-sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 14 4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/></svg></span>
+                <span class="docs-sidebar-title">Rate Limiting</span>
+                <span class="docs-sidebar-chevron"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></span>
+              </summary>
+              <ul>
+                <li><a class="docs-sidebar-link" href="/rate-limiting/overview"><span>Overview</span></a></li>
+                <li>
+                  <a class="docs-sidebar-link" href="/rate-limiting/configuring-policies"><span>Configuring Policies</span></a>
+                </li>
+                <li>
+                  <a class="docs-sidebar-link" href="/rate-limiting/auth-rate-limits"><span>Auth Rate Limits</span></a>
+                </li>
+                <li><a class="docs-sidebar-link" href="/rate-limiting/trusted-proxies"><span>Trusted Proxies</span></a></li>
+              </ul>
+            </details>
+            <details class="docs-sidebar-group">
+              <summary class="docs-sidebar-summary">
+                <span class="docs-sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 18 3.5 8.5 12 2l8.5 6.5L18 18Z"/><path d="M6 18h12"/><path d="m12 2 6 16"/></svg></span>
+                <span class="docs-sidebar-title">Dart Client</span>
+                <span class="docs-sidebar-chevron"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></span>
+              </summary>
+              <ul>
+                <li><a class="docs-sidebar-link" href="/dart-client/overview"><span>Overview</span></a></li>
+                <li><a class="docs-sidebar-link" href="/dart-client/typed-client"><span>Typed Client</span></a></li>
+                <li><a class="docs-sidebar-link" href="/dart-client/authentication"><span>Authentication</span></a></li>
+                <li><a class="docs-sidebar-link" href="/dart-client/database"><span>Database</span></a></li>
+                <li><a class="docs-sidebar-link" href="/dart-client/photos"><span>Photos</span></a></li>
+                <li><a class="docs-sidebar-link" href="/dart-client/email"><span>Email</span></a></li>
+                <li><a class="docs-sidebar-link" href="/dart-client/storage"><span>Storage</span></a></li>
+              </ul>
+            </details>
+            <details class="docs-sidebar-group">
+              <summary class="docs-sidebar-summary">
+                <span class="docs-sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" x2="20" y1="19" y2="19"/></svg></span>
+                <span class="docs-sidebar-title">CLI Reference</span>
+                <span class="docs-sidebar-chevron"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></span>
+              </summary>
+              <ul>
+                <li><a class="docs-sidebar-link" href="/cli/dev"><span>zonai dev</span></a></li>
+                <li><a class="docs-sidebar-link" href="/cli/serve"><span>zonai serve</span></a></li>
+                <li><a class="docs-sidebar-link" href="/cli/build"><span>zonai build</span></a></li>
+                <li><a class="docs-sidebar-link" href="/cli/compile"><span>zonai compile</span></a></li>
+                <li><a class="docs-sidebar-link" href="/cli/db"><span>zonai db</span></a></li>
+                <li><a class="docs-sidebar-link" href="/cli/gen"><span>zonai gen</span></a></li>
+                <li><a class="docs-sidebar-link" href="/cli/rules"><span>zonai rules</span></a></li>
+                <li><a class="docs-sidebar-link" href="/cli/ping"><span>zonai ping</span></a></li>
+                <li><a class="docs-sidebar-link" href="/cli/ai"><span>zonai ai</span></a></li>
+                <li><a class="docs-sidebar-link" href="/cli/version"><span>zonai version</span></a></li>
+                <li><a class="docs-sidebar-link" href="/cli/upgrading"><span>Upgrading Zonai</span></a></li>
+                <li><a class="docs-sidebar-link" href="/cli/global-flags"><span>Global Flags</span></a></li>
+              </ul>
+            </details>
+            <details class="docs-sidebar-group">
+              <summary class="docs-sidebar-summary">
+                <span class="docs-sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="8" x="2" y="2" rx="2"/><rect width="20" height="8" x="2" y="14" rx="2"/><line x1="6" x2="6.01" y1="6" y2="6"/><line x1="6" x2="6.01" y1="18" y2="18"/></svg></span>
+                <span class="docs-sidebar-title">Deployment</span>
+                <span class="docs-sidebar-chevron"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></span>
+              </summary>
+              <ul>
+                <li>
+                  <a class="docs-sidebar-link" href="/deployment/building-for-production"><span>Building for Production</span></a>
+                </li>
+                <li>
+                  <a class="docs-sidebar-link" href="/deployment/running-the-server"><span>Running the Server</span></a>
+                </li>
+                <li><a class="docs-sidebar-link" href="/deployment/server-binding"><span>Server Binding</span></a></li>
+                <li>
+                  <a class="docs-sidebar-link" href="/deployment/environment-and-secrets"><span>Environment &amp; Secrets</span></a>
+                </li>
+                <li><a class="docs-sidebar-link" href="/deployment/cross-compilation"><span>Cross-Compilation</span></a></li>
+                <li><a class="docs-sidebar-link" href="/deployment/fly-io"><span>Deploying to Fly.io</span></a></li>
+              </ul>
+            </details>
+          </nav>
+        </div>
+        <main>
+          <div>
+            <div class="content-container">
+              <div class="content-header">
+                <nav class="breadcrumbs" aria-label="Breadcrumb"><a href="/">Docs</a><span class="breadcrumb-sep">/</span><span>Authentication</span></nav>
+                <h1>OAuth</h1>
+                <p>
+                  Sign in with Google, Apple, GitHub and other providers — zonai runs the OAuth2/OIDC flow itself and mints its own session.
+                </p>
+              </div>
+              <section class="content">
+                <p>
+                  OAuth lets users sign in with an identity provider — Google, Apple, GitHub and
+                  five others out of the box, or any OAuth2/OIDC provider via a custom
+                  declaration. Zonai runs the whole flow itself: authorization redirect, code
+                  exchange, <code>id_token</code>/userinfo verification, and session minting. The result
+                  is a normal zonai JWT — same refresh, same revocation, same <code>Jwt</code> your rules
+                  and extensions already see for password, OTP and magic-link sign-in.
+                </p>
+                <p>
+                  The developer experience matches those three exactly: <strong>add a mixin to your
+                    auth schema, override one member.</strong>
+                </p>
+                <div class="callout callout-info">
+                  <span><svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" width="20px" height="20px"><circle cx="12" cy="12" r="10"></circle><path d="M12 16v-4"></path><path d="M12 8h.01"></path></svg></span>
+                  <span><p>Zonai <em>running</em> OAuth is not the same thing as zonai <em>trusting</em> an OAuth
+provider's token. If you already have Supabase Auth, Auth0, Clerk or another
+IdP issuing JWTs and just want zonai to accept them, see <a href="/authentication/external-idp">External Identity
+Providers</a> instead — no redirect flow, no
+provider console setup, just a JWKS or shared-secret config. Reach for this
+page when you want zonai itself to own the OAuth handshake; reach for that
+one when someone else already does.</p></span>
+                </div>
+                <h2 id="enabling-oauth" anchor="true"><span>Enabling OAuth</span><a href="/authentication/oauth#enabling-oauth">#</a></h2>
+                <p>Add <code>with OAuth</code> to your auth table class and override <code>oauthProviders</code>:</p>
+                <div class="code-block">
+                  <!--@jaspr_content:code_block_copy_button-->
+                  <button>
+                    <svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" width="18px" height="18px">
+                      <rect rx="2" ry="2" x="8" y="8" width="14" height="14"></rect>
+                      <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path>
+                    </svg>
+                  </button>
+                  <!--/@jaspr_content:code_block_copy_button-->
+                  <pre><code><span style="color: #b9eeff"><span style="color: #569cd6">final</span> <span style="color: #569cd6">class</span> <span style="color: #4ec9b0">UserTable</span> <span style="color: #569cd6">extends</span> <span style="color: #4ec9b0">AuthTable</span><span style="color: #d4d4d4">&lt;</span><span style="color: #4ec9b0">User</span><span style="color: #d4d4d4">&gt;</span>
+    <span style="color: #569cd6">with</span> <span style="color: #4ec9b0">OAuth</span><span style="color: #d4d4d4">,</span> <span style="color: #4ec9b0">AsAdmin</span><span> <span style="color: #5caeef">{</span>
+  </span><span style="color: #608b4e">// ...</span>
+
+  <span style="color: #569cd6">@override</span>
+  <span style="color: #4ec9b0">List</span><span style="color: #d4d4d4">&lt;</span><span style="color: #4ec9b0">OAuthProvider</span><span style="color: #d4d4d4">&gt;</span> <span style="color: #569cd6">get</span> oauthProviders <span style="color: #d4d4d4">=&gt;</span><span> <span style="color: #dfb976">[</span>
+    </span><span style="color: #4ec9b0">OAuthProvider</span><span style="color: #d4d4d4">.</span><span style="color: #dcdcaa">google</span><span><span style="color: #c172d9">(</span>
+      clientId</span><span style="color: #d4d4d4">:</span> <span style="color: #569cd6">const</span> <span style="color: #4ec9b0">String</span><span style="color: #d4d4d4">.</span><span style="color: #dcdcaa">fromEnvironment</span><span style="color: #4fb1bc">(</span><span style="color: #ce9178">'GOOGLE_CLIENT_ID'</span><span style="color: #4fb1bc">)</span><span style="color: #d4d4d4">,</span>
+      clientSecret<span style="color: #d4d4d4">:</span> <span style="color: #569cd6">const</span> <span style="color: #4ec9b0">String</span><span style="color: #d4d4d4">.</span><span style="color: #dcdcaa">fromEnvironment</span><span style="color: #4fb1bc">(</span><span style="color: #ce9178">'GOOGLE_CLIENT_SECRET'</span><span style="color: #4fb1bc">)</span><span style="color: #d4d4d4">,</span><span>
+    <span style="color: #c172d9">)</span></span><span style="color: #d4d4d4">,</span>
+    <span style="color: #4ec9b0">OAuthProvider</span><span style="color: #d4d4d4">.</span><span style="color: #dcdcaa">github</span><span><span style="color: #c172d9">(</span>
+      clientId</span><span style="color: #d4d4d4">:</span> <span style="color: #569cd6">const</span> <span style="color: #4ec9b0">String</span><span style="color: #d4d4d4">.</span><span style="color: #dcdcaa">fromEnvironment</span><span style="color: #4fb1bc">(</span><span style="color: #ce9178">'GITHUB_CLIENT_ID'</span><span style="color: #4fb1bc">)</span><span style="color: #d4d4d4">,</span>
+      clientSecret<span style="color: #d4d4d4">:</span> <span style="color: #569cd6">const</span> <span style="color: #4ec9b0">String</span><span style="color: #d4d4d4">.</span><span style="color: #dcdcaa">fromEnvironment</span><span style="color: #4fb1bc">(</span><span style="color: #ce9178">'GITHUB_CLIENT_SECRET'</span><span style="color: #4fb1bc">)</span><span style="color: #d4d4d4">,</span><span>
+    <span style="color: #c172d9">)</span></span><span style="color: #d4d4d4">,</span><span>
+  <span style="color: #dfb976">]</span></span><span style="color: #d4d4d4">;</span><span>
+<span style="color: #5caeef">}</span>
+
+</span><span style="color: #569cd6">final</span> users <span style="color: #d4d4d4">=</span> <span style="color: #dcdcaa">authTable</span><span style="color: #5caeef">(</span><span style="color: #ce9178">'users'</span><span style="color: #d4d4d4">,</span> <span style="color: #4ec9b0">UserTable</span><span style="color: #d4d4d4">.</span><span style="color: #c586c0">new</span><span style="color: #5caeef">)</span><span style="color: #d4d4d4">;</span>
+</span></code></pre>
+                </div>
+                <p>
+                  <code>oauthProviders</code> is abstract — leaving it unimplemented is a compile error,
+                  not a runtime surprise. The list must be non-empty and every
+                  <code>OAuthProvider.id</code> must be unique; both are checked the moment providers are
+                  listed (table registration), not on a user's first sign-in attempt. <code>OAuth</code>
+                  
+                  can combine with <code>PasswordAuth</code>, <code>OtpAuth</code> and <code>MagicLinkAuth</code>
+                   on the same
+                  table — see <a href="/schemas/auth-tables">Auth Tables</a> for the full mixin list and
+                  column setup, and <a href="/configuration/environment-variables">Environment Variables</a>
+                  
+                  for how <code>.env</code> and <code>String.fromEnvironment</code> fit together. The 
+                  <code>const</code> is
+                  load-bearing there too — without it you get the runtime default (<code>''</code>)
+                  instead of the value baked in at compile time.
+                </p>
+                <p>
+                  An empty <code>clientId</code> or <code>clientSecret</code> is rejected at construction, so a
+                  project whose defines are missing fails at start-up with a message naming the
+                  provider rather than at some user's first sign-in. That is deliberate — but it
+                  also means a checkout that has not configured OAuth yet will not boot at all.
+                  If you need the table to come up regardless (a shared fixture, a CI job that
+                  never signs in), give the define a <code>defaultValue</code>, as
+                  <code>apps/playground</code> does:
+                </p>
+                <div class="code-block">
+                  <!--@jaspr_content:code_block_copy_button-->
+                  <button>
+                    <svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" width="18px" height="18px">
+                      <rect rx="2" ry="2" x="8" y="8" width="14" height="14"></rect>
+                      <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path>
+                    </svg>
+                  </button>
+                  <!--/@jaspr_content:code_block_copy_button-->
+                  <pre><code><span style="color: #b9eeff">clientId<span style="color: #d4d4d4">:</span> <span style="color: #569cd6">const</span> <span style="color: #4ec9b0">String</span><span style="color: #d4d4d4">.</span><span style="color: #dcdcaa">fromEnvironment</span><span><span style="color: #5caeef">(</span>
+  </span><span style="color: #ce9178">'GOOGLE_CLIENT_ID'</span><span style="color: #d4d4d4">,</span>
+  defaultValue<span style="color: #d4d4d4">:</span> <span style="color: #ce9178">'placeholder-not-a-real-client-id'</span><span style="color: #d4d4d4">,</span><span>
+<span style="color: #5caeef">)</span></span><span style="color: #d4d4d4">,</span>
+</span></code></pre>
+                </div>
+                <p>
+                  Omit <code>defaultValue</code> in a real project. A placeholder that reaches production
+                  turns a loud start-up failure into a sign-in that fails at Google.
+                </p>
+                <p>Each provider is one of two shapes:</p>
+                <ul>
+                  <li>
+                    <strong>Built-in</strong> — produced only by the eight named factories below
+                    (<code>OAuthProvider.google(...)</code>, etc). Endpoints, scopes and claim mapping are
+                    baked in from that provider's own OIDC discovery document or API reference;
+                    you supply credentials and may override <code>scopes</code> and <code>linking</code>.
+                  </li>
+                  <li>
+                    <strong>Custom</strong> (<code>OAuthProvider.custom(...)</code>) — every field explicit. Use this
+                    for anything without a named factory: an internal SSO provider, a
+                    self-managed GitLab instance, any OAuth2/OIDC issuer.
+                  </li>
+                </ul>
+                <h2 id="built-in-providers" anchor="true"><span>Built-in providers</span><a href="/authentication/oauth#built-in-providers">#</a></h2>
+                <table>
+                  <thead><tr><th>Provider</th><th>Factory</th><th>PKCE</th><th>OIDC (<code>id_token</code>)</th></tr></thead>
+                  <tbody>
+                    <tr><td>Google</td><td><code>OAuthProvider.google</code></td><td>yes</td><td>yes</td></tr>
+                    <tr>
+                      <td>Apple</td>
+                      <td><code>OAuthProvider.apple</code></td>
+                      <td>no (<a href="#apple">Apple's flow doesn't support it</a>)</td>
+                      <td>yes</td>
+                    </tr>
+                    <tr><td>GitHub</td><td><code>OAuthProvider.github</code></td><td>yes</td><td>no — userinfo only</td></tr>
+                    <tr><td>Microsoft</td><td><code>OAuthProvider.microsoft</code></td><td>yes</td><td>yes</td></tr>
+                    <tr>
+                      <td>Facebook</td>
+                      <td><code>OAuthProvider.facebook</code></td>
+                      <td>no</td>
+                      <td>no — Graph API <code>/me</code> only</td>
+                    </tr>
+                    <tr><td>Discord</td><td><code>OAuthProvider.discord</code></td><td>yes</td><td>no — userinfo only</td></tr>
+                    <tr><td>GitLab</td><td><code>OAuthProvider.gitlab</code></td><td>yes</td><td>yes</td></tr>
+                    <tr><td>LinkedIn</td><td><code>OAuthProvider.linkedin</code></td><td>yes</td><td>yes</td></tr>
+                  </tbody>
+                </table>
+                <p>Every walkthrough below assumes the redirect flow's callback URL:</p>
+                <div class="code-block">
+                  <!--@jaspr_content:code_block_copy_button-->
+                  <button>
+                    <svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" width="18px" height="18px">
+                      <rect rx="2" ry="2" x="8" y="8" width="14" height="14"></rect>
+                      <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path>
+                    </svg>
+                  </button>
+                  <!--/@jaspr_content:code_block_copy_button-->
+                  <pre><code><span style="color: #b9eeff"><span><span style="color: #5caeef">{</span>baseUrl<span style="color: #5caeef">}</span></span><span style="color: #d4d4d4">/</span>auth<span style="color: #d4d4d4">/</span>oauth<span style="color: #d4d4d4">/</span>callback<span style="color: #d4d4d4">/</span><span><span style="color: #5caeef">{</span>provider<span style="color: #5caeef">}</span>
+</span></span></code></pre>
+                </div>
+                <p>
+                  — e.g. <code>https://api.myapp.com/auth/oauth/callback/google</code>, where <code>baseUrl</code> is
+                  your <code>AppConfig.baseUrl</code> and <code>{provider}</code> is the factory's fixed 
+                  <code>id</code>
+                  (<code>'google'</code>, <code>'apple'</code>, ...). Paste the exact value into each console below —
+                  a mismatch fails the exchange, since <code>redirect_uri</code> is exact-matched
+                  server-side.
+                </p>
+                <h3 id="google" anchor="true"><span>Google</span><a href="/authentication/oauth#google">#</a></h3>
+                <ol>
+                  <li>
+                    <a href="https://console.cloud.google.com/">Google Cloud Console</a> → <strong>APIs &amp;
+                      Services → OAuth consent screen</strong> — configure it first (External for a
+                    public app) if you haven't already.
+                  </li>
+                  <li>
+                    <strong>APIs &amp; Services → Credentials → Create Credentials → OAuth client ID</strong> →
+                    application type <strong>Web application</strong>.
+                  </li>
+                  <li>
+                    Under <strong>Authorized redirect URIs</strong>, add <code>{baseUrl}/auth/oauth/callback/google</code>.
+                  </li>
+                  <li>
+                    Copy the <strong>Client ID</strong> and <strong>Client secret</strong> into <code>GOOGLE_CLIENT_ID</code>
+                     /
+                    <code>GOOGLE_CLIENT_SECRET</code> in your <code>.env</code>.
+                  </li>
+                </ol>
+                <div class="code-block">
+                  <!--@jaspr_content:code_block_copy_button-->
+                  <button>
+                    <svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" width="18px" height="18px">
+                      <rect rx="2" ry="2" x="8" y="8" width="14" height="14"></rect>
+                      <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path>
+                    </svg>
+                  </button>
+                  <!--/@jaspr_content:code_block_copy_button-->
+                  <pre><code><span style="color: #b9eeff"><span style="color: #4ec9b0">OAuthProvider</span><span style="color: #d4d4d4">.</span><span style="color: #dcdcaa">google</span><span><span style="color: #5caeef">(</span>
+  clientId</span><span style="color: #d4d4d4">:</span> <span style="color: #569cd6">const</span> <span style="color: #4ec9b0">String</span><span style="color: #d4d4d4">.</span><span style="color: #dcdcaa">fromEnvironment</span><span style="color: #dfb976">(</span><span style="color: #ce9178">'GOOGLE_CLIENT_ID'</span><span style="color: #dfb976">)</span><span style="color: #d4d4d4">,</span>
+  clientSecret<span style="color: #d4d4d4">:</span> <span style="color: #569cd6">const</span> <span style="color: #4ec9b0">String</span><span style="color: #d4d4d4">.</span><span style="color: #dcdcaa">fromEnvironment</span><span style="color: #dfb976">(</span><span style="color: #ce9178">'GOOGLE_CLIENT_SECRET'</span><span style="color: #dfb976">)</span><span style="color: #d4d4d4">,</span><span>
+<span style="color: #5caeef">)</span></span><span style="color: #d4d4d4">,</span>
+</span></code></pre>
+                </div>
+                <p>
+                  Default scopes: <code>openid</code>, <code>email</code>, <code>profile</code>. Default linking:
+                  <code>OAuthLinking.byVerifiedEmail</code> — Google always asserts <code>email_verified</code>, so
+                  this is safe to leave as-is.
+                </p>
+                <h3 id="apple" anchor="true"><span>Apple</span><a href="/authentication/oauth#apple">#</a></h3>
+                <p>
+                  The longest setup of the eight, because Apple's <code>client_secret</code> isn't a
+                  static string — it's an ES256 JWT zonai signs fresh for every token request,
+                  from a private key only you hold.
+                </p>
+                <ol>
+                  <li>
+                    <strong>Register an App ID</strong>, if you don't have one — [Apple Developer →
+                    Certificates, Identifiers &amp; Profiles → Identifiers → App IDs**, with <strong>Sign
+                      In with Apple</strong> enabled as a capability.
+                  </li>
+                  <li>
+                    <strong>Register a Services ID</strong> — same <strong>Identifiers</strong> page, type <strong>Services
+                      IDs</strong>. This is a <em>separate</em> identifier from your App ID, and its
+                    identifier string (e.g. <code>com.example.app.signin</code>) is the <code>clientId</code>
+                     you
+                    pass below — not your app's bundle ID.
+                  </li>
+                  <li>
+                    On the Services ID, enable <strong>Sign In with Apple</strong>, then <strong>Configure</strong>:<ul><li><strong>Primary App ID</strong> — the App ID from step 1.</li><li><strong>Domains and Subdomains</strong> — your app's domain, e.g. <code>myapp.com</code>.</li><li><strong>Return URLs</strong> — <code>{baseUrl}/auth/oauth/callback/apple</code>.</li></ul>
+                  </li>
+                  <li>
+                    <strong>Create a Sign in with Apple key</strong> — <strong>Identifiers → Keys → Create a
+                      key</strong>, enable <strong>Sign In with Apple</strong>, associate it with the App ID.
+                    Download the <code>.p8</code> file <strong>immediately</strong> — Apple lets you download it
+                    exactly once. Note the <strong>Key ID</strong> shown on the key's page.
+                  </li>
+                  <li>
+                    Note your <strong>Team ID</strong> — top-right of the Apple Developer account page, or
+                    <strong>Membership Details</strong>.
+                  </li>
+                  <li>
+                    Set four env vars:<ul><li><p><code>APPLE_CLIENT_ID</code> — the Services ID identifier from step 2.</p></li><li><p><code>APPLE_TEAM_ID</code> — from step 5.</p></li><li><p><code>APPLE_KEY_ID</code> — from step 4.</p></li><li><p><code>APPLE_PRIVATE_KEY</code> — the <code>.p8</code> file's contents. <code>.env</code> is line-based, so
+                          a multi-line PEM can't go in as-is: replace every real newline with a
+                          literal <code>\n</code> before pasting it into <code>.env</code>, then undo that at read time
+                          in your schema, since <code>String.fromEnvironment</code> doesn't interpret escape
+                          sequences for you:</p><div class="code-block"><!--@jaspr_content:code_block_copy_button--><button><svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" width="18px" height="18px"><rect rx="2" ry="2" x="8" y="8" width="14" height="14"></rect><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path></svg></button><!--/@jaspr_content:code_block_copy_button--><pre><code><span style="color: #b9eeff"># <span style="color: #d4d4d4">.</span>env
+<span style="color: #4ec9b0">APPLE_PRIVATE_KEY</span><span style="color: #d4d4d4">=</span><span style="color: #ce9178">"-----BEGIN PRIVATE KEY-----</span><span style="color: #ce9178">\n</span><span style="color: #ce9178">MIGH...</span><span style="color: #ce9178">\n</span><span style="color: #ce9178">-----END PRIVATE KEY-----</span><span style="color: #ce9178">\n</span><span style="color: #ce9178">"</span>
+</span></code></pre></div></li></ul>
+                  </li>
+                </ol>
+                <div class="code-block">
+                  <!--@jaspr_content:code_block_copy_button-->
+                  <button>
+                    <svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" width="18px" height="18px">
+                      <rect rx="2" ry="2" x="8" y="8" width="14" height="14"></rect>
+                      <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path>
+                    </svg>
+                  </button>
+                  <!--/@jaspr_content:code_block_copy_button-->
+                  <pre><code><span style="color: #b9eeff"><span style="color: #4ec9b0">OAuthProvider</span><span style="color: #d4d4d4">.</span><span style="color: #dcdcaa">apple</span><span><span style="color: #5caeef">(</span>
+  clientId</span><span style="color: #d4d4d4">:</span> <span style="color: #569cd6">const</span> <span style="color: #4ec9b0">String</span><span style="color: #d4d4d4">.</span><span style="color: #dcdcaa">fromEnvironment</span><span style="color: #dfb976">(</span><span style="color: #ce9178">'APPLE_CLIENT_ID'</span><span style="color: #dfb976">)</span><span style="color: #d4d4d4">,</span>
+  teamId<span style="color: #d4d4d4">:</span> <span style="color: #569cd6">const</span> <span style="color: #4ec9b0">String</span><span style="color: #d4d4d4">.</span><span style="color: #dcdcaa">fromEnvironment</span><span style="color: #dfb976">(</span><span style="color: #ce9178">'APPLE_TEAM_ID'</span><span style="color: #dfb976">)</span><span style="color: #d4d4d4">,</span>
+  keyId<span style="color: #d4d4d4">:</span> <span style="color: #569cd6">const</span> <span style="color: #4ec9b0">String</span><span style="color: #d4d4d4">.</span><span style="color: #dcdcaa">fromEnvironment</span><span style="color: #dfb976">(</span><span style="color: #ce9178">'APPLE_KEY_ID'</span><span style="color: #dfb976">)</span><span style="color: #d4d4d4">,</span>
+  privateKey<span style="color: #d4d4d4">:</span> <span style="color: #569cd6">const</span> <span style="color: #4ec9b0">String</span><span style="color: #d4d4d4">.</span><span style="color: #dcdcaa">fromEnvironment</span><span><span style="color: #dfb976">(</span>
+    </span><span style="color: #ce9178">'APPLE_PRIVATE_KEY'</span><span style="color: #d4d4d4">,</span><span>
+  <span style="color: #dfb976">)</span></span><span style="color: #d4d4d4">.</span><span style="color: #dcdcaa">replaceAll</span><span style="color: #dfb976">(</span><span style="color: #ce9178">r'\n'</span><span style="color: #d4d4d4">,</span> <span style="color: #ce9178">'</span><span style="color: #ce9178">\n</span><span style="color: #ce9178">'</span><span style="color: #dfb976">)</span><span style="color: #d4d4d4">,</span><span>
+<span style="color: #5caeef">)</span></span><span style="color: #d4d4d4">,</span>
+</span></code></pre>
+                </div>
+                <p>
+                  Two things unique to Apple worth knowing before you build a sign-in UI
+                  around it:
+                </p>
+                <ul>
+                  <li>
+                    <strong>The user's name arrives exactly once</strong> — on the very first authorization,
+                    as a form-post <code>user</code> field, never again and never inside the <code>id_token</code>.
+                    Zonai's Apple factory leaves <code>OAuthClaimMap.name</code> unset for this reason; if
+                    you need the name, capture it from your <code>onExternalAuthFirstSeen</code> hook the
+                    first time a subject provisions, because there is no second chance to ask
+                    Apple for it.
+                  </li>
+                  <li>
+                    <strong>The email may be a private relay address</strong> (<code>abc123@privaterelay.appleid.com</code>)
+                    that forwards to the user's real inbox. Treat it as opaque — don't assume
+                    it round-trips to outbound mail you send from elsewhere.
+                  </li>
+                </ul>
+                <p>
+                  Apple's <code>usesPkce</code> is <code>false</code> — Apple's own authorization endpoint doesn't
+                  support PKCE the way the other seven do; the ES256 client-secret JWT is
+                  Apple's substitute proof of possession.
+                </p>
+                <h3 id="github" anchor="true"><span>GitHub</span><a href="/authentication/oauth#github">#</a></h3>
+                <ol>
+                  <li>
+                    <a href="https://github.com/settings/developers">GitHub → Settings → Developer settings → OAuth Apps → New OAuth App</a>.
+                  </li>
+                  <li><strong>Homepage URL</strong> — your app's URL.</li>
+                  <li><strong>Authorization callback URL</strong> — <code>{baseUrl}/auth/oauth/callback/github</code>.</li>
+                  <li>
+                    Copy the <strong>Client ID</strong>, then <strong>Generate a new client secret</strong> and copy it.
+                    Set <code>GITHUB_CLIENT_ID</code> / <code>GITHUB_CLIENT_SECRET</code>.
+                  </li>
+                </ol>
+                <div class="code-block">
+                  <!--@jaspr_content:code_block_copy_button-->
+                  <button>
+                    <svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" width="18px" height="18px">
+                      <rect rx="2" ry="2" x="8" y="8" width="14" height="14"></rect>
+                      <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path>
+                    </svg>
+                  </button>
+                  <!--/@jaspr_content:code_block_copy_button-->
+                  <pre><code><span style="color: #b9eeff"><span style="color: #4ec9b0">OAuthProvider</span><span style="color: #d4d4d4">.</span><span style="color: #dcdcaa">github</span><span><span style="color: #5caeef">(</span>
+  clientId</span><span style="color: #d4d4d4">:</span> <span style="color: #569cd6">const</span> <span style="color: #4ec9b0">String</span><span style="color: #d4d4d4">.</span><span style="color: #dcdcaa">fromEnvironment</span><span style="color: #dfb976">(</span><span style="color: #ce9178">'GITHUB_CLIENT_ID'</span><span style="color: #dfb976">)</span><span style="color: #d4d4d4">,</span>
+  clientSecret<span style="color: #d4d4d4">:</span> <span style="color: #569cd6">const</span> <span style="color: #4ec9b0">String</span><span style="color: #d4d4d4">.</span><span style="color: #dcdcaa">fromEnvironment</span><span style="color: #dfb976">(</span><span style="color: #ce9178">'GITHUB_CLIENT_SECRET'</span><span style="color: #dfb976">)</span><span style="color: #d4d4d4">,</span><span>
+<span style="color: #5caeef">)</span></span><span style="color: #d4d4d4">,</span>
+</span></code></pre>
+                </div>
+                <p>
+                  GitHub isn't OIDC — there's no <code>id_token</code>, identity comes from <code>GET /user</code>.
+                  Accounts with a private primary email return <code>email: null</code> there; zonai
+                  falls back to <code>GET /user/emails</code> and uses the address marked both <code>primary</code>
+                  
+                  and <code>verified</code>. Default scopes: <code>read:user</code>, <code>user:email</code>.
+                </p>
+                <h3 id="microsoft" anchor="true"><span>Microsoft</span><a href="/authentication/oauth#microsoft">#</a></h3>
+                <ol>
+                  <li>
+                    <a href="https://portal.azure.com/">Azure Portal → Microsoft Entra ID → App registrations → New
+                      registration</a>.
+                  </li>
+                  <li>
+                    <strong>Redirect URI</strong> — platform <strong>Web</strong>,
+                    <code>{baseUrl}/auth/oauth/callback/microsoft</code>.
+                  </li>
+                  <li>
+                    <strong>Certificates &amp; secrets → New client secret</strong> — copy the secret <strong>value</strong>
+                    
+                    (not the secret ID) immediately; it's hidden after you leave the page.
+                  </li>
+                  <li>
+                    Copy the <strong>Application (client) ID</strong>. Set <code>MICROSOFT_CLIENT_ID</code> /
+                    <code>MICROSOFT_CLIENT_SECRET</code>.
+                  </li>
+                </ol>
+                <div class="code-block">
+                  <!--@jaspr_content:code_block_copy_button-->
+                  <button>
+                    <svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" width="18px" height="18px">
+                      <rect rx="2" ry="2" x="8" y="8" width="14" height="14"></rect>
+                      <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path>
+                    </svg>
+                  </button>
+                  <!--/@jaspr_content:code_block_copy_button-->
+                  <pre><code><span style="color: #b9eeff"><span style="color: #4ec9b0">OAuthProvider</span><span style="color: #d4d4d4">.</span><span style="color: #dcdcaa">microsoft</span><span><span style="color: #5caeef">(</span>
+  clientId</span><span style="color: #d4d4d4">:</span> <span style="color: #569cd6">const</span> <span style="color: #4ec9b0">String</span><span style="color: #d4d4d4">.</span><span style="color: #dcdcaa">fromEnvironment</span><span style="color: #dfb976">(</span><span style="color: #ce9178">'MICROSOFT_CLIENT_ID'</span><span style="color: #dfb976">)</span><span style="color: #d4d4d4">,</span>
+  clientSecret<span style="color: #d4d4d4">:</span> <span style="color: #569cd6">const</span> <span style="color: #4ec9b0">String</span><span style="color: #d4d4d4">.</span><span style="color: #dcdcaa">fromEnvironment</span><span style="color: #dfb976">(</span><span style="color: #ce9178">'MICROSOFT_CLIENT_SECRET'</span><span style="color: #dfb976">)</span><span style="color: #d4d4d4">,</span><span>
+<span style="color: #5caeef">)</span></span><span style="color: #d4d4d4">,</span>
+</span></code></pre>
+                </div>
+                <p>
+                  Defaults to the <code>common</code> tenant (personal + work/school accounts), which is
+                  why <code>OAuthEndpoints.issuer</code> is left unset — the templated multi-tenant
+                  discovery document doesn't publish one concrete issuer. Pass <code>tenant:</code> with
+                  your own directory's GUID to scope sign-in to a single organization and get a
+                  concrete issuer for <code>id_token</code> verification.
+                </p>
+                <h3 id="facebook" anchor="true"><span>Facebook</span><a href="/authentication/oauth#facebook">#</a></h3>
+                <ol>
+                  <li>
+                    <a href="https://developers.facebook.com/apps/">Meta for Developers → My Apps → Create App</a> →
+                    add the <strong>Facebook Login</strong> product.
+                  </li>
+                  <li>
+                    <strong>Facebook Login → Settings → Valid OAuth Redirect URIs</strong> —
+                    <code>{baseUrl}/auth/oauth/callback/facebook</code>.
+                  </li>
+                  <li>
+                    <strong>App settings → Basic</strong> — copy <strong>App ID</strong> / <strong>App Secret</strong> into
+                    <code>FACEBOOK_CLIENT_ID</code> / <code>FACEBOOK_CLIENT_SECRET</code>.
+                  </li>
+                  <li>
+                    The <code>email</code> permission needs <a href="https://developers.facebook.com/docs/app-review">App Review</a>
+                    
+                    before it works for anyone outside your app's development roles.
+                  </li>
+                </ol>
+                <div class="code-block">
+                  <!--@jaspr_content:code_block_copy_button-->
+                  <button>
+                    <svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" width="18px" height="18px">
+                      <rect rx="2" ry="2" x="8" y="8" width="14" height="14"></rect>
+                      <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path>
+                    </svg>
+                  </button>
+                  <!--/@jaspr_content:code_block_copy_button-->
+                  <pre><code><span style="color: #b9eeff"><span style="color: #4ec9b0">OAuthProvider</span><span style="color: #d4d4d4">.</span><span style="color: #dcdcaa">facebook</span><span><span style="color: #5caeef">(</span>
+  clientId</span><span style="color: #d4d4d4">:</span> <span style="color: #569cd6">const</span> <span style="color: #4ec9b0">String</span><span style="color: #d4d4d4">.</span><span style="color: #dcdcaa">fromEnvironment</span><span style="color: #dfb976">(</span><span style="color: #ce9178">'FACEBOOK_CLIENT_ID'</span><span style="color: #dfb976">)</span><span style="color: #d4d4d4">,</span>
+  clientSecret<span style="color: #d4d4d4">:</span> <span style="color: #569cd6">const</span> <span style="color: #4ec9b0">String</span><span style="color: #d4d4d4">.</span><span style="color: #dcdcaa">fromEnvironment</span><span style="color: #dfb976">(</span><span style="color: #ce9178">'FACEBOOK_CLIENT_SECRET'</span><span style="color: #dfb976">)</span><span style="color: #d4d4d4">,</span><span>
+<span style="color: #5caeef">)</span></span><span style="color: #d4d4d4">,</span>
+</span></code></pre>
+                </div>
+                <p>
+                  Not OIDC — no <code>id_token</code>, no JWKS; identity comes from the Graph API <code>/me</code>
+                  call. Default scopes: <code>email</code>, <code>public_profile</code>.
+                </p>
+                <h3 id="discord" anchor="true"><span>Discord</span><a href="/authentication/oauth#discord">#</a></h3>
+                <ol>
+                  <li>
+                    <a href="https://discord.com/developers/applications">Discord Developer Portal → New Application</a>.
+                  </li>
+                  <li><strong>OAuth2 → Redirects</strong> — add <code>{baseUrl}/auth/oauth/callback/discord</code>.</li>
+                  <li>
+                    <strong>OAuth2</strong> tab — copy <strong>Client ID</strong> / <strong>Client Secret</strong> into
+                    <code>DISCORD_CLIENT_ID</code> / <code>DISCORD_CLIENT_SECRET</code>.
+                  </li>
+                </ol>
+                <div class="code-block">
+                  <!--@jaspr_content:code_block_copy_button-->
+                  <button>
+                    <svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" width="18px" height="18px">
+                      <rect rx="2" ry="2" x="8" y="8" width="14" height="14"></rect>
+                      <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path>
+                    </svg>
+                  </button>
+                  <!--/@jaspr_content:code_block_copy_button-->
+                  <pre><code><span style="color: #b9eeff"><span style="color: #4ec9b0">OAuthProvider</span><span style="color: #d4d4d4">.</span><span style="color: #dcdcaa">discord</span><span><span style="color: #5caeef">(</span>
+  clientId</span><span style="color: #d4d4d4">:</span> <span style="color: #569cd6">const</span> <span style="color: #4ec9b0">String</span><span style="color: #d4d4d4">.</span><span style="color: #dcdcaa">fromEnvironment</span><span style="color: #dfb976">(</span><span style="color: #ce9178">'DISCORD_CLIENT_ID'</span><span style="color: #dfb976">)</span><span style="color: #d4d4d4">,</span>
+  clientSecret<span style="color: #d4d4d4">:</span> <span style="color: #569cd6">const</span> <span style="color: #4ec9b0">String</span><span style="color: #d4d4d4">.</span><span style="color: #dcdcaa">fromEnvironment</span><span style="color: #dfb976">(</span><span style="color: #ce9178">'DISCORD_CLIENT_SECRET'</span><span style="color: #dfb976">)</span><span style="color: #d4d4d4">,</span><span>
+<span style="color: #5caeef">)</span></span><span style="color: #d4d4d4">,</span>
+</span></code></pre>
+                </div>
+                <p>
+                  Not OIDC — identity comes from <code>GET /users/@me</code>. Default scopes: <code>identify</code>,
+                  <code>email</code>.
+                </p>
+                <h3 id="gitlab" anchor="true"><span>GitLab</span><a href="/authentication/oauth#gitlab">#</a></h3>
+                <ol>
+                  <li>
+                    <a href="https://gitlab.com/-/user_settings/applications">gitlab.com → User Settings → Applications → Add new
+                      application</a>.
+                  </li>
+                  <li><strong>Redirect URI</strong> — <code>{baseUrl}/auth/oauth/callback/gitlab</code>.</li>
+                  <li><strong>Scopes</strong> — check <code>openid</code>, <code>email</code>, <code>profile</code>.</li>
+                  <li>
+                    Copy the <strong>Application ID</strong> / <strong>Secret</strong> into <code>GITLAB_CLIENT_ID</code>
+                     /
+                    <code>GITLAB_CLIENT_SECRET</code>.
+                  </li>
+                </ol>
+                <div class="code-block">
+                  <!--@jaspr_content:code_block_copy_button-->
+                  <button>
+                    <svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" width="18px" height="18px">
+                      <rect rx="2" ry="2" x="8" y="8" width="14" height="14"></rect>
+                      <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path>
+                    </svg>
+                  </button>
+                  <!--/@jaspr_content:code_block_copy_button-->
+                  <pre><code><span style="color: #b9eeff"><span style="color: #4ec9b0">OAuthProvider</span><span style="color: #d4d4d4">.</span><span style="color: #dcdcaa">gitlab</span><span><span style="color: #5caeef">(</span>
+  clientId</span><span style="color: #d4d4d4">:</span> <span style="color: #569cd6">const</span> <span style="color: #4ec9b0">String</span><span style="color: #d4d4d4">.</span><span style="color: #dcdcaa">fromEnvironment</span><span style="color: #dfb976">(</span><span style="color: #ce9178">'GITLAB_CLIENT_ID'</span><span style="color: #dfb976">)</span><span style="color: #d4d4d4">,</span>
+  clientSecret<span style="color: #d4d4d4">:</span> <span style="color: #569cd6">const</span> <span style="color: #4ec9b0">String</span><span style="color: #d4d4d4">.</span><span style="color: #dcdcaa">fromEnvironment</span><span style="color: #dfb976">(</span><span style="color: #ce9178">'GITLAB_CLIENT_SECRET'</span><span style="color: #dfb976">)</span><span style="color: #d4d4d4">,</span><span>
+<span style="color: #5caeef">)</span></span><span style="color: #d4d4d4">,</span>
+</span></code></pre>
+                </div>
+                <p>
+                  This factory targets <code>gitlab.com</code>. For a self-managed instance, use
+                  <code>OAuthProvider.custom(...)</code> with that instance's own endpoints instead — see
+                  <a href="#custom-providers">Custom providers</a>.
+                </p>
+                <h3 id="linkedin" anchor="true"><span>LinkedIn</span><a href="/authentication/oauth#linkedin">#</a></h3>
+                <ol>
+                  <li><a href="https://www.linkedin.com/developers/apps">LinkedIn Developer Portal → Create app</a>.</li>
+                  <li>
+                    Request the <strong>"Sign In with LinkedIn using OpenID Connect"</strong> product —
+                    auto-approved for most apps.
+                  </li>
+                  <li>
+                    <strong>Auth</strong> tab → <strong>Authorized redirect URLs for your app</strong> —
+                    <code>{baseUrl}/auth/oauth/callback/linkedin</code>.
+                  </li>
+                  <li>
+                    Copy the <strong>Client ID</strong> / <strong>Client Secret</strong> into <code>LINKEDIN_CLIENT_ID</code>
+                     /
+                    <code>LINKEDIN_CLIENT_SECRET</code>.
+                  </li>
+                </ol>
+                <div class="code-block">
+                  <!--@jaspr_content:code_block_copy_button-->
+                  <button>
+                    <svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" width="18px" height="18px">
+                      <rect rx="2" ry="2" x="8" y="8" width="14" height="14"></rect>
+                      <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path>
+                    </svg>
+                  </button>
+                  <!--/@jaspr_content:code_block_copy_button-->
+                  <pre><code><span style="color: #b9eeff"><span style="color: #4ec9b0">OAuthProvider</span><span style="color: #d4d4d4">.</span><span style="color: #dcdcaa">linkedin</span><span><span style="color: #5caeef">(</span>
+  clientId</span><span style="color: #d4d4d4">:</span> <span style="color: #569cd6">const</span> <span style="color: #4ec9b0">String</span><span style="color: #d4d4d4">.</span><span style="color: #dcdcaa">fromEnvironment</span><span style="color: #dfb976">(</span><span style="color: #ce9178">'LINKEDIN_CLIENT_ID'</span><span style="color: #dfb976">)</span><span style="color: #d4d4d4">,</span>
+  clientSecret<span style="color: #d4d4d4">:</span> <span style="color: #569cd6">const</span> <span style="color: #4ec9b0">String</span><span style="color: #d4d4d4">.</span><span style="color: #dcdcaa">fromEnvironment</span><span style="color: #dfb976">(</span><span style="color: #ce9178">'LINKEDIN_CLIENT_SECRET'</span><span style="color: #dfb976">)</span><span style="color: #d4d4d4">,</span><span>
+<span style="color: #5caeef">)</span></span><span style="color: #d4d4d4">,</span>
+</span></code></pre>
+                </div>
+                <p>Default scopes: <code>openid</code>, <code>profile</code>, <code>email</code>.</p>
+                <h2 id="custom-providers" anchor="true"><span>Custom providers</span><a href="/authentication/oauth#custom-providers">#</a></h2>
+                <p>
+                  Anything without a named factory — an internal SSO provider, a self-managed
+                  GitLab or Keycloak instance, any other OAuth2/OIDC issuer — via
+                  <code>OAuthProvider.custom(...)</code>. Every field is explicit:
+                </p>
+                <div class="code-block">
+                  <!--@jaspr_content:code_block_copy_button-->
+                  <button>
+                    <svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" width="18px" height="18px">
+                      <rect rx="2" ry="2" x="8" y="8" width="14" height="14"></rect>
+                      <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path>
+                    </svg>
+                  </button>
+                  <!--/@jaspr_content:code_block_copy_button-->
+                  <pre><code><span style="color: #b9eeff"><span style="color: #4ec9b0">OAuthProvider</span><span style="color: #d4d4d4">.</span><span style="color: #dcdcaa">custom</span><span><span style="color: #5caeef">(</span>
+  id</span><span style="color: #d4d4d4">:</span> <span style="color: #ce9178">'acme'</span><span style="color: #d4d4d4">,</span>
+  displayName<span style="color: #d4d4d4">:</span> <span style="color: #ce9178">'Acme SSO'</span><span style="color: #d4d4d4">,</span>
+  endpoints<span style="color: #d4d4d4">:</span> <span style="color: #569cd6">const</span> <span style="color: #4ec9b0">OAuthEndpoints</span><span><span style="color: #dfb976">(</span>
+    authorization</span><span style="color: #d4d4d4">:</span> <span style="color: #ce9178">'https://sso.acme.example/authorize'</span><span style="color: #d4d4d4">,</span>
+    token<span style="color: #d4d4d4">:</span> <span style="color: #ce9178">'https://sso.acme.example/token'</span><span style="color: #d4d4d4">,</span>
+    userInfo<span style="color: #d4d4d4">:</span> <span style="color: #ce9178">'https://sso.acme.example/userinfo'</span><span style="color: #d4d4d4">,</span>
+    issuer<span style="color: #d4d4d4">:</span> <span style="color: #ce9178">'https://sso.acme.example'</span><span style="color: #d4d4d4">,</span> <span style="color: #608b4e">// set alongside jwks to verify id_token</span>
+    jwks<span style="color: #d4d4d4">:</span> <span style="color: #ce9178">'https://sso.acme.example/.well-known/jwks.json'</span><span style="color: #d4d4d4">,</span><span>
+  <span style="color: #dfb976">)</span></span><span style="color: #d4d4d4">,</span>
+  scopes<span style="color: #d4d4d4">:</span> <span style="color: #569cd6">const</span><span> <span style="color: #dfb976">[</span></span><span style="color: #ce9178">'openid'</span><span style="color: #d4d4d4">,</span> <span style="color: #ce9178">'email'</span><span style="color: #d4d4d4">,</span> <span style="color: #ce9178">'profile'</span><span style="color: #dfb976">]</span><span style="color: #d4d4d4">,</span>
+  claims<span style="color: #d4d4d4">:</span> <span style="color: #569cd6">const</span> <span style="color: #4ec9b0">OAuthClaimMap</span><span><span style="color: #dfb976">(</span>
+    subject</span><span style="color: #d4d4d4">:</span> <span style="color: #ce9178">'sub'</span><span style="color: #d4d4d4">,</span>
+    email<span style="color: #d4d4d4">:</span> <span style="color: #ce9178">'email'</span><span style="color: #d4d4d4">,</span>
+    emailVerified<span style="color: #d4d4d4">:</span> <span style="color: #ce9178">'email_verified'</span><span style="color: #d4d4d4">,</span>
+    name<span style="color: #d4d4d4">:</span> <span style="color: #ce9178">'name'</span><span style="color: #d4d4d4">,</span><span>
+  <span style="color: #dfb976">)</span></span><span style="color: #d4d4d4">,</span>
+  clientId<span style="color: #d4d4d4">:</span> <span style="color: #569cd6">const</span> <span style="color: #4ec9b0">String</span><span style="color: #d4d4d4">.</span><span style="color: #dcdcaa">fromEnvironment</span><span style="color: #dfb976">(</span><span style="color: #ce9178">'ACME_CLIENT_ID'</span><span style="color: #dfb976">)</span><span style="color: #d4d4d4">,</span>
+  clientSecret<span style="color: #d4d4d4">:</span> <span style="color: #569cd6">const</span> <span style="color: #4ec9b0">String</span><span style="color: #d4d4d4">.</span><span style="color: #dcdcaa">fromEnvironment</span><span style="color: #dfb976">(</span><span style="color: #ce9178">'ACME_CLIENT_SECRET'</span><span style="color: #dfb976">)</span><span style="color: #d4d4d4">,</span><span>
+<span style="color: #5caeef">)</span></span><span style="color: #d4d4d4">,</span>
+</span></code></pre>
+                </div>
+                <p>
+                  <code>id</code> is both the route segment and the identity key — pick something stable,
+                  since it's part of <code>_oauth_identities</code>' unique index. <code>endpoints.issuer</code>
+                   and
+                  <code>.jwks</code> are only needed together, and only if the provider issues a
+                  verifiable <code>id_token</code>; leave both null for a provider whose identity comes
+                  from <code>userInfo</code> alone (mirroring how GitHub, Discord and Facebook's built-in
+                  factories work). <code>OAuthClaimMap</code>'s paths are dotted for nested fields — e.g.
+                  <code>'picture.data.url'</code> for a userinfo response shaped
+                  <code>{"picture": {"data": {"url": "..."}}}</code>.
+                </p>
+                <h2 id="how-sign-in-works" anchor="true"><span>How sign-in works</span><a href="/authentication/oauth#how-sign-in-works">#</a></h2>
+                <p>
+                  <strong>Redirect flow</strong> (dashboard, web apps) — the client navigates the browser
+                  through two round trips:
+                </p>
+                <div class="code-block">
+                  <!--@jaspr_content:code_block_copy_button-->
+                  <button>
+                    <svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" width="18px" height="18px">
+                      <rect rx="2" ry="2" x="8" y="8" width="14" height="14"></rect>
+                      <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path>
+                    </svg>
+                  </button>
+                  <!--/@jaspr_content:code_block_copy_button-->
+                  <pre><code><span style="color: #b9eeff"><span style="color: #4ec9b0">GET</span><span> <span style="color: #5caeef">{</span>baseUrl<span style="color: #5caeef">}</span></span><span style="color: #d4d4d4">/</span>auth<span style="color: #d4d4d4">/</span>oauth<span style="color: #d4d4d4">/</span>start<span style="color: #d4d4d4">/</span><span><span style="color: #5caeef">{</span>provider<span style="color: #5caeef">}</span></span><span style="color: #d4d4d4">?</span>table<span style="color: #d4d4d4">=</span>users<span style="color: #d4d4d4">&amp;</span>redirect_to<span style="color: #d4d4d4">=</span><span style="color: #d4d4d4">/</span>dashboard
+</span></code></pre>
+                </div>
+                <p>
+                  Zonai mints a single-use <code>state</code> (plus a PKCE <code>code_verifier</code> and OIDC
+                  <code>nonce</code> where applicable), stores it server-side, and redirects to the
+                  provider's consent screen. After the user approves, the provider redirects
+                  back to the callback URL from the walkthroughs above with <code>code</code> and <code>state</code>:
+                </p>
+                <div class="code-block">
+                  <!--@jaspr_content:code_block_copy_button-->
+                  <button>
+                    <svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" width="18px" height="18px">
+                      <rect rx="2" ry="2" x="8" y="8" width="14" height="14"></rect>
+                      <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path>
+                    </svg>
+                  </button>
+                  <!--/@jaspr_content:code_block_copy_button-->
+                  <pre><code><span style="color: #b9eeff"><span style="color: #4ec9b0">GET</span><span> <span style="color: #5caeef">{</span>baseUrl<span style="color: #5caeef">}</span></span><span style="color: #d4d4d4">/</span>auth<span style="color: #d4d4d4">/</span>oauth<span style="color: #d4d4d4">/</span>callback<span style="color: #d4d4d4">/</span><span><span style="color: #5caeef">{</span>provider<span style="color: #5caeef">}</span></span><span style="color: #d4d4d4">?</span>code<span style="color: #d4d4d4">=</span><span style="color: #d4d4d4">...</span><span style="color: #d4d4d4">&amp;</span>state<span style="color: #d4d4d4">=</span><span style="color: #d4d4d4">...</span>
+</span></code></pre>
+                </div>
+                <p>
+                  Zonai consumes the <code>state</code> (single-use — replaying it fails the same way an
+                  unrecognized one does), exchanges <code>code</code> for tokens, verifies identity, mints
+                  a session the same way password sign-in does, and redirects to <code>redirect_to</code>.
+                  <code>redirect_to</code> must be a relative path or your app's own origin — anything
+                  else is rejected before the redirect happens, so this can't be turned into an
+                  open redirect.
+                </p>
+                <p>
+                  <strong>Native flow</strong> (mobile / desktop apps using the provider's own SDK) — the
+                  app runs <code>google_sign_in</code>, Sign in with Apple, etc. itself and hands zonai
+                  the result directly: either the OIDC <code>idToken</code>, or the <code>code</code>
+                   +
+                  <code>codeVerifier</code> + <code>redirectUri</code> the app generated and exchanged against.
+                  Same identity resolution and session minting as the redirect flow, with no
+                  server-side challenge row — the app already owns <code>state</code>/PKCE. This is the
+                  primary path for Flutter apps built against <code>zonai_client</code>, not a fallback
+                  behind the web flow.
+                </p>
+                <p>
+                  Both flows end in the same place every other auth method does: the
+                  <code>onExternalAuthFirstSeen</code> extension hook for provisioning, and the same JWT
+                  issuance for session minting. If your schema already handles <a href="/authentication/external-idp#provisioning-users">external IdP
+                    provisioning</a>, OAuth reuses
+                  that hook as-is.
+                </p>
+                <h2 id="account-linking" anchor="true"><span>Account linking</span><a href="/authentication/oauth#account-linking">#</a></h2>
+                <p>
+                  The first time a <code>(table, provider, subject)</code> triple is seen, zonai decides
+                  whether it's a new user or an existing one via <code>OAuthLinking</code>, set per
+                  provider:
+                </p>
+                <table>
+                  <thead><tr><th>Value</th><th>Behavior</th></tr></thead>
+                  <tbody>
+                    <tr>
+                      <td><code>byVerifiedEmail</code> (default)</td>
+                      <td>Link to an existing row whose email matches — only when the provider asserts that email as verified.</td>
+                    </tr>
+                    <tr>
+                      <td><code>never</code></td>
+                      <td>
+                        Never link by email. An unrecognized subject always provisions a new row (or is rejected by your provisioning gate).
+                      </td>
+                    </tr>
+                    <tr>
+                      <td><code>always</code></td>
+                      <td>
+                        Link to an existing row whose email matches, 
+                        <strong>even when the provider does not assert it verified.</strong>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+                <p>
+                  <code>always</code> is a footgun, not a convenience, and it's documented as one on the
+                  enum itself: anyone who controls an email address — a typo'd signup, a
+                  lapsed domain, a provider that never verifies email at all — can sign in as
+                  the zonai account that owns it, without ever proving they control the inbox.
+                  Reach for it only against a provider you know guarantees verified emails out
+                  of band (an internal SSO where your own IT already verifies addresses, say).
+                  For every public-facing provider in the built-in list, the default
+                  <code>byVerifiedEmail</code> is the right choice and every factory already defaults to
+                  it.
+                </p>
+                <h2 id="signing-into-the-dashboard-with-oauth" anchor="true">
+                  <span>Signing into the dashboard with OAuth</span><a href="/authentication/oauth#signing-into-the-dashboard-with-oauth">#</a>
+                </h2>
+                <p>
+                  Combine <code>OAuth</code> with <a href="/authentication/admin-accounts"><code>AsAdmin</code></a> on a table
+                  to let admins sign into the zonai dashboard through a provider instead of a
+                  dashboard-only password:
+                </p>
+                <div class="code-block">
+                  <!--@jaspr_content:code_block_copy_button-->
+                  <button>
+                    <svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" width="18px" height="18px">
+                      <rect rx="2" ry="2" x="8" y="8" width="14" height="14"></rect>
+                      <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path>
+                    </svg>
+                  </button>
+                  <!--/@jaspr_content:code_block_copy_button-->
+                  <pre><code><span style="color: #b9eeff"><span style="color: #569cd6">final</span> <span style="color: #569cd6">class</span> <span style="color: #4ec9b0">AdminTable</span> <span style="color: #569cd6">extends</span> <span style="color: #4ec9b0">AuthTable</span><span style="color: #d4d4d4">&lt;</span><span style="color: #4ec9b0">Admin</span><span style="color: #d4d4d4">&gt;</span>
+    <span style="color: #569cd6">with</span> <span style="color: #4ec9b0">OAuth</span><span style="color: #d4d4d4">,</span> <span style="color: #4ec9b0">AsAdmin</span><span> <span style="color: #5caeef">{</span>
+  </span><span style="color: #569cd6">@override</span>
+  <span style="color: #4ec9b0">List</span><span style="color: #d4d4d4">&lt;</span><span style="color: #4ec9b0">OAuthProvider</span><span style="color: #d4d4d4">&gt;</span> <span style="color: #569cd6">get</span> oauthProviders <span style="color: #d4d4d4">=&gt;</span><span> <span style="color: #dfb976">[</span>
+    </span><span style="color: #4ec9b0">OAuthProvider</span><span style="color: #d4d4d4">.</span><span style="color: #dcdcaa">google</span><span><span style="color: #c172d9">(</span>
+      clientId</span><span style="color: #d4d4d4">:</span> <span style="color: #569cd6">const</span> <span style="color: #4ec9b0">String</span><span style="color: #d4d4d4">.</span><span style="color: #dcdcaa">fromEnvironment</span><span style="color: #4fb1bc">(</span><span style="color: #ce9178">'GOOGLE_CLIENT_ID'</span><span style="color: #4fb1bc">)</span><span style="color: #d4d4d4">,</span>
+      clientSecret<span style="color: #d4d4d4">:</span> <span style="color: #569cd6">const</span> <span style="color: #4ec9b0">String</span><span style="color: #d4d4d4">.</span><span style="color: #dcdcaa">fromEnvironment</span><span style="color: #4fb1bc">(</span><span style="color: #ce9178">'GOOGLE_CLIENT_SECRET'</span><span style="color: #4fb1bc">)</span><span style="color: #d4d4d4">,</span><span>
+    <span style="color: #c172d9">)</span></span><span style="color: #d4d4d4">,</span><span>
+  <span style="color: #dfb976">]</span></span><span style="color: #d4d4d4">;</span><span>
+<span style="color: #5caeef">}</span>
+</span></span></code></pre>
+                </div>
+                <p>
+                  The admin-specific entry point (<code>startAdminOAuth</code>) resolves the <code>AsAdmin</code>
+                  table configured for OAuth the same way admin sign-in already resolves it for
+                  password auth — no separate admin OAuth pipeline. One deliberate difference
+                  from the regular flow: <strong>admin sign-in never auto-provisions.</strong> A subject
+                  that doesn't already match an admin row is rejected rather than silently
+                  creating one — admin accounts are still created explicitly, via <code>zonai db admin add</code>, never as a side effect of someone signing in with the right
+                  Google account.
+                </p>
+                <h3 id="gmail-only-admin-walkthrough" anchor="true">
+                  <span>Gmail-only admin walkthrough</span><a href="/authentication/oauth#gmail-only-admin-walkthrough">#</a>
+                </h3>
+                <p>
+                  <code>admin add</code> doesn't require a password — it only requires one when the
+                  admin table actually mixes in <code>PasswordAuth</code>. On a table configured like the
+                  one above (<code>OAuth, AsAdmin</code>, no <code>PasswordAuth</code>), a supplied 
+                  <code>--password</code>
+                  is rejected as an error rather than silently ignored, so this is the whole
+                  flow:
+                </p>
+                <ol>
+                  <li>
+                    <p>Create the row, email only:</p><div class="code-block"><!--@jaspr_content:code_block_copy_button--><button><svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" width="18px" height="18px"><rect rx="2" ry="2" x="8" y="8" width="14" height="14"></rect><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path></svg></button><!--/@jaspr_content:code_block_copy_button--><pre><code><span style="color: #b9eeff">zonai db admin add <span style="color: #d4d4d4">--</span>email <span style="color: #569cd6">operator</span><span style="color: #569cd6">@example</span><span style="color: #d4d4d4">.</span>com
+</span></code></pre></div><p>The account is created <code>isVerified = true</code> (unless you pass
+                      <code>--no-verify</code>) with no password credential at all — there is no password
+                      column on this table to fill in.</p>
+                  </li>
+                  <li>
+                    <p>The operator visits the dashboard and signs in with Google using
+                      <code>operator@example.com</code>.</p>
+                  </li>
+                  <li>
+                    <p><code>startAdminOAuth</code> / <code>completeOAuth</code> resolve the identity: no
+                      <code>(table, provider, subject)</code> row exists yet, but the provider asserts a
+                      <em>verified</em> email matching the row created in step 1, so the identity
+                      links to it (<code>OAuthLinking.byVerifiedEmail</code>, the default) instead of
+                      being rejected as unprovisioned. The operator is signed in, and every
+                      Google sign-in after the first reuses the linked identity directly.</p>
+                  </li>
+                </ol>
+                <p>
+                  No password ever exists for this account — the more secure configuration
+                  the CLI used to be unable to serve.
+                </p>
+                <blockquote>
+                  <p>
+                    <strong>That guarantee covers the admin entry point, not the table.</strong> A JWT minted
+                    for <em>any</em> row in an <code>AsAdmin</code> table carries <code>isAdmin: true</code>, and 
+                    <code>canSignUp</code>
+                    defaults to allowing sign-up for every auth type the table declares. So the
+                    ordinary sign-in path aimed at that same table — <code>/auth/oauth/start/:provider?table=…</code>,
+                    and equally password, OTP and magic-link sign-up — will still provision a new
+                    row, and that row is an admin.
+                  </p>
+                  <p>
+                    This is not specific to OAuth; it is how <code>AsAdmin</code> has always behaved. If your
+                    admin table is reachable by public sign-up, <strong>override <code>canSignUp</code> on it</strong>:
+                  </p>
+                  <div class="code-block">
+                    <!--@jaspr_content:code_block_copy_button-->
+                    <button>
+                      <svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" width="18px" height="18px">
+                        <rect rx="2" ry="2" x="8" y="8" width="14" height="14"></rect>
+                        <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path>
+                      </svg>
+                    </button>
+                    <!--/@jaspr_content:code_block_copy_button-->
+                    <pre><code><span style="color: #b9eeff"><span style="color: #569cd6">class</span> <span style="color: #4ec9b0">AdminRowRules</span> <span style="color: #569cd6">extends</span> <span style="color: #4ec9b0">AuthRowRules</span><span style="color: #d4d4d4">&lt;</span><span style="color: #4ec9b0">AdminTable</span>, <span style="color: #4ec9b0">Admin</span><span style="color: #d4d4d4">&gt;</span><span> <span style="color: #5caeef">{</span>
+  </span><span style="color: #569cd6">const</span> <span style="color: #4ec9b0">AdminRowRules</span><span style="color: #dfb976">(</span><span style="color: #569cd6">super</span><span style="color: #d4d4d4">.</span><span>schema<span style="color: #dfb976">)</span></span><span style="color: #d4d4d4">;</span>
+
+  <span style="color: #569cd6">@override</span>
+  <span style="color: #4ec9b0">Future</span><span style="color: #d4d4d4">&lt;</span><span style="color: #4ec9b0">bool</span><span style="color: #d4d4d4">&gt;</span> <span style="color: #dcdcaa">canSignUp</span><span style="color: #dfb976">(</span><span style="color: #4ec9b0">Jwt</span><span style="color: #d4d4d4">?</span> jwt<span style="color: #d4d4d4">,</span> <span style="color: #4ec9b0">AuthType</span><span> authType<span style="color: #dfb976">)</span> </span><span style="color: #c586c0">async</span><span> <span style="color: #dfb976">{</span>
+    </span><span style="color: #608b4e">// Only an existing admin may create another one.</span>
+    <span style="color: #c586c0">return</span> jwt<span style="color: #d4d4d4">?</span><span style="color: #d4d4d4">.</span>admin<span style="color: #d4d4d4">.</span>isAdmin <span style="color: #d4d4d4">==</span> <span style="color: #569cd6">true</span><span style="color: #d4d4d4">;</span><span>
+  <span style="color: #dfb976">}</span>
+<span style="color: #5caeef">}</span>
+</span></span></code></pre>
+                  </div>
+                  <p>The safer shape is a dedicated admin table that no public sign-in path names.</p>
+                </blockquote>
+                <h2 id="oauth-vs-external-identity-providers" anchor="true">
+                  <span>OAuth vs. External Identity Providers</span><a href="/authentication/oauth#oauth-vs-external-identity-providers">#</a>
+                </h2>
+                <p>
+                  Both let a user sign in without a zonai password. The difference is who runs
+                  the OAuth handshake:
+                </p>
+                <table>
+                  <thead>
+                    <tr><th></th><th>OAuth (this page)</th><th><a href="/authentication/external-idp">External IdP</a></th></tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td>Who talks to the provider</td>
+                      <td>zonai — authorization redirect, code exchange, token verification</td>
+                      <td>Your existing IdP (Supabase Auth, Auth0, Clerk, ...); zonai only verifies the JWT it hands you</td>
+                    </tr>
+                    <tr>
+                      <td>Setup</td>
+                      <td>Register an app in each provider's console; declare <code>oauthProviders</code></td>
+                      <td>Point <code>AppConfig.externalIdps</code> at your IdP's issuer + JWKS or shared secret</td>
+                    </tr>
+                    <tr>
+                      <td>Best for</td>
+                      <td>Greenfield apps where zonai owns auth end-to-end and you want "Sign in with Google" directly</td>
+                      <td>
+                        Apps that already have an IdP for something zonai can't replicate (phone+SMS OTP, enterprise SSO, an existing user base)
+                      </td>
+                    </tr>
+                    <tr>
+                      <td>Session</td>
+                      <td>A zonai JWT, revocable via the <code>_jwt</code> table like any other session</td>
+                      <td>
+                        No zonai token is issued at all — the client keeps presenting the IdP's, and zonai verifies it per request. Nothing to revoke through 
+                        <code>_jwt</code>
+                        , because it isn't zonai's token
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+                <p>
+                  If you're unsure: this page is the greenfield choice — a new app that wants
+                  provider sign-in without operating a separate identity service. Reach for
+                  <a href="/authentication/external-idp">External Identity Providers</a> when that
+                  separate identity service already exists and you'd rather not duplicate it.
+                </p>
+                <h2 id="see-also" anchor="true"><span>See also</span><a href="/authentication/oauth#see-also">#</a></h2>
+                <ul>
+                  <li>
+                    <strong><a href="/authentication/external-idp">External Identity Providers</a></strong> — trusting
+                    an existing IdP's JWT instead of running OAuth yourself.
+                  </li>
+                  <li>
+                    <strong><a href="/schemas/auth-tables">Auth Tables</a></strong> — <code>AuthTable</code>, the other auth
+                    mixins, and column setup.
+                  </li>
+                  <li>
+                    <strong><a href="/authentication/admin-accounts">Admin Accounts</a></strong> — <code>AsAdmin</code>, elevated
+                    JWT claims, the CLI for creating admins.
+                  </li>
+                  <li>
+                    <strong><a href="/configuration/environment-variables">Environment Variables</a></strong> — how
+                    <code>.env</code> and <code>String.fromEnvironment</code> fit together for provider credentials.
+                  </li>
+                  <li>
+                    <strong><a href="/authentication/overview">Authentication Overview</a></strong> — the JWT model
+                    every auth method, including OAuth, shares.
+                  </li>
+                </ul>
+              </section>
+              <div class="content-footer">
+                <nav class="page-nav" aria-label="Pagination">
+                  <a class="page-nav-link page-nav-prev" href="/authentication/magic-link-auth"><span class="page-nav-label">Previous</span><span class="page-nav-title">Magic Link Auth</span></a>
+                  <a class="page-nav-link page-nav-next" href="/authentication/external-idp">
+                    <span class="page-nav-label">Next</span>
+                    <span class="page-nav-title">External Identity Providers</span>
+                  </a>
+                </nav>
+              </div>
+            </div>
+            <aside class="toc">
+              <div>
+                <h3>On this page</h3>
+                <ul>
+                  <li style="padding-left: 0em"><a href="/authentication/oauth#enabling-oauth">Enabling OAuth</a></li>
+                  <li style="padding-left: 0em"><a href="/authentication/oauth#built-in-providers">Built-in providers</a></li>
+                  <li style="padding-left: 0.75em"><a href="/authentication/oauth#google">Google</a></li>
+                  <li style="padding-left: 0.75em"><a href="/authentication/oauth#apple">Apple</a></li>
+                  <li style="padding-left: 0.75em"><a href="/authentication/oauth#github">GitHub</a></li>
+                  <li style="padding-left: 0.75em"><a href="/authentication/oauth#microsoft">Microsoft</a></li>
+                  <li style="padding-left: 0.75em"><a href="/authentication/oauth#facebook">Facebook</a></li>
+                  <li style="padding-left: 0.75em"><a href="/authentication/oauth#discord">Discord</a></li>
+                  <li style="padding-left: 0.75em"><a href="/authentication/oauth#gitlab">GitLab</a></li>
+                  <li style="padding-left: 0.75em"><a href="/authentication/oauth#linkedin">LinkedIn</a></li>
+                  <li style="padding-left: 0em"><a href="/authentication/oauth#custom-providers">Custom providers</a></li>
+                  <li style="padding-left: 0em"><a href="/authentication/oauth#how-sign-in-works">How sign-in works</a></li>
+                  <li style="padding-left: 0em"><a href="/authentication/oauth#account-linking">Account linking</a></li>
+                  <li style="padding-left: 0em">
+                    <a href="/authentication/oauth#signing-into-the-dashboard-with-oauth">Signing into the dashboard with OAuth</a>
+                  </li>
+                  <li style="padding-left: 0.75em"><a href="/authentication/oauth#gmail-only-admin-walkthrough">Gmail-only admin walkthrough</a></li>
+                  <li style="padding-left: 0em">
+                    <a href="/authentication/oauth#oauth-vs-external-identity-providers">OAuth vs. External Identity Providers</a>
+                  </li>
+                  <li style="padding-left: 0em"><a href="/authentication/oauth#see-also">See also</a></li>
+                </ul>
+              </div>
+            </aside>
+          </div>
+        </main>
+      </div>
+    </div>
+  </body>
+</html>

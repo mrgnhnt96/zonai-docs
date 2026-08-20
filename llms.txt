@@ -1,0 +1,191 @@
+# Zonai
+
+> A batteries-included Dart backend framework — schema-driven REST API, auth, SQLite, **live query streams**, file uploads, cron jobs, and more.
+
+Zonai turns Dart schema, rules, and business logic into a production HTTP + SQLite server. You host the binary yourself (not a managed cloud BaaS). Docs: https://docs.zonai.dev/ — source: https://github.com/mrgnhnt96/zonai
+
+**Live UI:** every table has `GET /db/stream`, `/db/stream/list`, `/db/stream/count`. Prefer `zonai_client` → `client.db.listen`. In this codebase the feature is named **stream** / **listen**. Guide: https://docs.zonai.dev/operations/streaming
+
+The docs site has full-text search (press ⌘K / Ctrl+K on any page); the same corpus is available as JSON at https://docs.zonai.dev/search-index.json — one record per page, split by heading, with the anchor for each section.
+
+This file is a curated index for LLMs and coding agents. Prefer these pages over guessing APIs. For project-local assistant rules, run `zonai ai cursor` (or `claude` / `copilot` / `windsurf` / `cline`) from an app root.
+
+## Critical facts for agents
+
+- **Package split**: `zonai_schema` (pub.dev dependency — tables, rules, ops types) and the optional `zonai_client` (pub.dev). The `zonai` CLI is **not** on pub.dev: it is a pre-compiled binary downloaded from https://zonai.dev and placed in the project root, invoked as `./zonai`.
+- **Runtime**: `zonai serve` / `zonai build` produce a **project-linked binary** with operations + rules **in-process**. Workers under `.zonai/executables/` handle config, extensions, rate limits, and crons (IPC via MessagePack). Hot path: Rate limit → Rules → Operations → SQLite → Extensions → Response.
+- **CRUD shape**: table name is in the JSON body (or `?body=` for GET), **never** in the URL path. Endpoints: `GET/POST/PATCH/DELETE /db`, `/db/list`, `/db/count`, `/db/many`, plus live **`/db/stream`**, `/db/stream/list`, `/db/stream/count`.
+- **Live queries**: long-lived HTTP streams push updates when SQLite results change. Client API: `client.db.listen.one|list|count` with `StreamBody` / `StreamListBody` / `StreamCountBody`.
+- **Where filters**: docs/curl shorthand `{ "id": { "eq": "…" } }` is accepted. Canonical wire form is `{ "type": "eq", "column": "id", "value": "…" }`. Both work.
+- **Auth**: `Authorization: Bearer <jwt>`. Bodies include `"table": "users"` (or whatever auth table). Mixins: `PasswordAuth`, `OtpAuth`, `MagicLinkAuth`, optional `AsAdmin`.
+- **Client**: prefer shipping `zonai_client` (auth, admin auth, db + listen, photos, email) over hand-rolled `package:http`.
+- **Typed client**: `zonai gen client` generates per-table APIs from the schema — `client.posts.list(...)` → `PostsRow`, instead of `client.db.list(body: ListBody(table: 'posts'), fromJson: …)`. It is an **extension** on `ZonaiClient`, so both styles are valid in one file. It needs a `client:` block in `zonai.yaml` whose `output` is **required with no default** (the server project cannot be an app dependency, so the destination belongs to the app). It emits reads (`get`/`list`/`count`), writes (`create`/`createMany`/`update`/`updateMany`/`delete`/`deleteMany`) and live queries (`client.posts.listen.*`), with column tokens for filters (`Posts.title.eq('x')`, `Posts.body.isNull`) and typed `expand` paths. Update fields take a `Patch`, so `Field.clear()` sets NULL and omission leaves alone. An enum column gets its own type -- an extension type over `String` with named constants (`BooksShelf.reading`), not a Dart `enum`, so a member the server adds later still parses; use `.value` where a raw `String` is needed. Importing the generated barrel is enough to name the query vocabulary (`Where`, `Paginated`, `OrderByTerm`) -- it re-exports `zonai_client`. A view gets no write surface. `_`-prefixed system tables are skipped unless named in `client.tables.include`. `zonai gen client --check` fails when committed output is stale. https://docs.zonai.dev/cli/gen
+- **Rules default deny**: unoverridden table/row/auth checks return false → HTTP 403 before SQL. Streams reuse `canView` / `canList` / `canCount`.
+- **Dev vs prod**: `zonai dev` / `zonai serve` for local; `zonai build` ships `build/zonai` (asserts off). Restart `serve` after editing ops/rules so the linked entry reloads; workers hot-recompile on their own.
+- **Migrations**: `zonai db migrate generate` then `apply` (or auto-migrate on serve). Commit `.zonai/migrations/`. Do not commit `.zonai/data/` or executables.
+- **Compile-time env**: `.env` — or `.env.<flavor>` when `--flavor <name>` is passed — is read from the project root automatically and baked into the binaries via `String.fromEnvironment`. **There is no `--dart-define-from-file`**: the env file is never named on the command line. Per-key overrides are `--dart-define KEY=VALUE` (space-separated, not `--dart-define=KEY=VALUE`), repeated. Unrecognized flags are dropped silently, so guessing a flag name builds cleanly with **zero** defines injected. https://docs.zonai.dev/configuration/environment-variables
+- **Optional runtime env**: `ZONAI_FORCE_WORKERS`, `ZONAI_WORKER_TRANSPORT` (`auto`|`process`|`isolate`), `ZONAI_WORKER_POOL_SIZE`, `ZONAI_HTTP_WORKERS` (keep `1` with one SQLite file).
+
+## Getting started
+
+- [Introduction](https://docs.zonai.dev/): What Zonai is and is not; request pipeline overview.
+- [Installation](https://docs.zonai.dev/getting-started/installation): CLI install from GitHub Releases; Dart SDK requirements.
+- [Quick Start](https://docs.zonai.dev/getting-started/quick-start): Create a project, auth + tasks tables, migrate, serve, curl examples.
+- [Project Structure](https://docs.zonai.dev/getting-started/project-structure): Directory layout, naming conventions for rules/ops/extensions, what to commit.
+
+## Core concepts
+
+- [How a Request is Processed](https://docs.zonai.dev/core-concepts/request-pipeline): Ordered pipeline and in-process vs worker boundaries.
+- [Workers](https://docs.zonai.dev/core-concepts/workers): What workers are, when they run, pool/transport knobs.
+- [Config Flavors](https://docs.zonai.dev/core-concepts/config-flavors): Dev/staging/prod config selection.
+
+## Configuration
+
+- [zonai.yaml Reference](https://docs.zonai.dev/configuration/zonai-yaml): Paths, version, server settings, and the `client:` block for `zonai gen client`.
+- [App Config](https://docs.zonai.dev/configuration/app-config): `AppConfig` — `baseUrl`, JWT secret, SMTP, photos, workers.
+- [Environment Variables](https://docs.zonai.dev/configuration/environment-variables): Compile-time `.env` secrets, `--dart-define` overrides (there is no `--dart-define-from-file`), and optional `ZONAI_*` runtime tuning.
+
+## Schemas
+
+- [Defining Tables](https://docs.zonai.dev/schemas/defining-tables): `Table` / entity / `table()` registration, column helpers, typed IDs.
+- [Auth Tables](https://docs.zonai.dev/schemas/auth-tables): `AuthTable` + password/OTP/magic-link mixins.
+- [Photo Tables](https://docs.zonai.dev/schemas/photo-tables): Built-in `_photos` and photo columns.
+
+## Database
+
+- [Migrations Overview](https://docs.zonai.dev/database/migrations-overview): How schema changes become SQL.
+- [Generating Migrations](https://docs.zonai.dev/database/generating-migrations): `zonai db migrate generate`.
+- [Applying Migrations](https://docs.zonai.dev/database/applying-migrations): `apply` and auto-migrate on serve.
+
+## Operations (HTTP + SQL)
+
+- [Operations Overview](https://docs.zonai.dev/operations/overview): Default vs custom operations; when to override SQL.
+- [Default Operations](https://docs.zonai.dev/operations/default-operations): CRUD endpoints, request/response JSON, where/order_by shapes.
+- [Streaming (Live Queries)](https://docs.zonai.dev/operations/streaming): `/db/stream*` and `client.db.listen`.
+- [Auth Operations](https://docs.zonai.dev/operations/auth-operations): JWT claims, reset/OTP/magic-link URL paths.
+
+## Rules (authorization)
+
+- [Rules Overview](https://docs.zonai.dev/rules/overview): Two-layer model (table then row); default deny.
+- [Table Rules](https://docs.zonai.dev/rules/table-rules): Per-operation allow/deny from JWT.
+- [Row Rules](https://docs.zonai.dev/rules/row-rules): Per-row checks; `requiresPerRowCheck`.
+- [Auth Rules](https://docs.zonai.dev/rules/auth-rules): Sign-up, sign-in, password reset gates.
+- [JWT Claims](https://docs.zonai.dev/rules/jwt-claims): Built-in claims and `addClaims`.
+- [Photo Rules](https://docs.zonai.dev/rules/photo-rules): Upload/view/delete photo access.
+
+## Authentication
+
+- [Authentication Overview](https://docs.zonai.dev/authentication/overview): JWT model, multi-table auth, response shape.
+- [Password Auth](https://docs.zonai.dev/authentication/password-auth): Email/password + Argon2id.
+- [OTP Auth](https://docs.zonai.dev/authentication/otp-auth): Email one-time codes.
+- [Magic Link Auth](https://docs.zonai.dev/authentication/magic-link-auth): Passwordless emailed links.
+- [Session Management](https://docs.zonai.dev/authentication/session-management): Refresh, logout, JWT lifetime.
+- [Admin Accounts](https://docs.zonai.dev/authentication/admin-accounts): `zonai db admin`, `AsAdmin`, elevated claims.
+
+## Extensions (lifecycle hooks)
+
+- [Extensions Overview](https://docs.zonai.dev/extensions/overview): Before/after hooks in the pipeline.
+- [Create Hooks](https://docs.zonai.dev/extensions/create-hooks) · [Update Hooks](https://docs.zonai.dev/extensions/update-hooks) · [Delete Hooks](https://docs.zonai.dev/extensions/delete-hooks) · [Auth Hooks](https://docs.zonai.dev/extensions/auth-hooks)
+- [Side Effects: get](https://docs.zonai.dev/extensions/side-effects-get) · [mutate](https://docs.zonai.dev/extensions/side-effects-mutate) · [email](https://docs.zonai.dev/extensions/side-effects-email)
+
+## Cron jobs
+
+- [Cron Jobs Overview](https://docs.zonai.dev/cron-jobs/overview)
+- [Defining a Job](https://docs.zonai.dev/cron-jobs/defining-a-job)
+- [Catch-Up Logic](https://docs.zonai.dev/cron-jobs/catch-up-logic)
+- [Running Jobs Manually](https://docs.zonai.dev/cron-jobs/running-manually)
+- [Side Effects in Cron Jobs](https://docs.zonai.dev/cron-jobs/side-effects)
+
+## Rate limiting
+
+- [Rate Limiting Overview](https://docs.zonai.dev/rate-limiting/overview)
+- [Configuring Policies](https://docs.zonai.dev/rate-limiting/configuring-policies)
+- [Auth Rate Limits](https://docs.zonai.dev/rate-limiting/auth-rate-limits)
+- [Trusted Proxies](https://docs.zonai.dev/rate-limiting/trusted-proxies)
+
+## Email
+
+- [SMTP Setup](https://docs.zonai.dev/email/smtp-setup)
+- [Built-in Templates](https://docs.zonai.dev/email/built-in-templates)
+- [Custom Templates](https://docs.zonai.dev/email/custom-templates)
+- [Testing Email Locally](https://docs.zonai.dev/email/testing-locally)
+
+## Push notifications
+
+Firebase Cloud Messaging. Recipients are named by a **query over a `$.deviceToken` column**, never a list of tokens: `await push(message, table: 'device_tokens', column: 'token', where: In('user_id', ids))`. Returns a `PushJobId` as soon as the job is durably recorded — **not** a delivery receipt, and not awaitable to completion. Call from `after*` hooks only. Requires `AppConfig.push`; without it the call throws. Zonai clears tokens FCM reports dead (`onPermanentRejection`, default `clearColumn`) and fires `onPushRejected` first.
+
+- [Push Overview](https://docs.zonai.dev/push/overview): What Zonai owns, and why setup needs an APNs key even though you only integrate FCM.
+- [Device Tokens](https://docs.zonai.dev/push/device-tokens): The `$.deviceToken` column; it must be nullable and its table must have a primary key.
+- [Push Configuration](https://docs.zonai.dev/push/configuration): `PushConfig`, and why `.file` credentials beat `.inline` (rotation is a file copy, not a rebuild).
+- [Sending](https://docs.zonai.dev/push/sending): `PushMessage`, collapse keys, and what the job id does and does not promise.
+- [Dead Tokens](https://docs.zonai.dev/push/dead-tokens): Pruning policy, the hook, and why a timeout is not a death.
+- [Delivery Guarantees](https://docs.zonai.dev/push/delivery-guarantees): At-least-once, duplicates bounded by one batch, and the transient failures that are not retried across passes.
+- [Testing Push Locally](https://docs.zonai.dev/push/testing-locally): FCM has no sandbox; how to run the whole path against a local stand-in, and what that still cannot prove.
+
+## Dart client
+
+- [Client Overview](https://docs.zonai.dev/dart-client/overview): Generated client install and `baseUrl` — prefer over hand-rolled HTTP.
+- [Typed Client](https://docs.zonai.dev/dart-client/typed-client): Per-table APIs from `zonai gen client` — typed rows and ids, column tokens (`Posts.title.eq`), typed `expand` paths, the write builders, live queries, `as:`.
+- [Authentication](https://docs.zonai.dev/dart-client/authentication)
+- [Database](https://docs.zonai.dev/dart-client/database): CRUD + **`db.listen` live streams**.
+- [Photos](https://docs.zonai.dev/dart-client/photos)
+- [Email](https://docs.zonai.dev/dart-client/email)
+- [Storage](https://docs.zonai.dev/dart-client/storage)
+
+## CLI
+
+- [zonai ai](https://docs.zonai.dev/cli/ai): Install LLM reference sheets into a project.
+- [zonai dev](https://docs.zonai.dev/cli/dev): Interactive TUI + serve helpers.
+- [zonai serve](https://docs.zonai.dev/cli/serve) · [zonai compile](https://docs.zonai.dev/cli/compile) · [zonai build](https://docs.zonai.dev/cli/build)
+- [zonai db](https://docs.zonai.dev/cli/db) · [zonai rules](https://docs.zonai.dev/cli/rules) · [zonai version](https://docs.zonai.dev/cli/version)
+- [zonai gen](https://docs.zonai.dev/cli/gen): Generate a typed Dart client from the schema; `--check` for CI.
+- [Upgrading Zonai](https://docs.zonai.dev/cli/upgrading): Moving between releases, including breaking upgrades.
+- [Global Flags](https://docs.zonai.dev/cli/global-flags): `--flavor`, `--release`, `--config`, log levels — and why an unrecognized flag is ignored instead of rejected.
+
+## Dashboard (admin UI)
+
+Served at `/_` by every Zonai server, in dev and production alike; there is no flag to disable it. Requires an admin JWT (`isAdmin`), created with `zonai db admin`. Routes: `/_` metrics, `/_/tables`, `/_/tables/<table>`, `/_/sign-in`.
+
+- [Dashboard Overview](https://docs.zonai.dev/dashboard/overview): Access, admin sign-in, and not exposing `/_` publicly.
+- [Metrics & Cron Jobs](https://docs.zonai.dev/dashboard/metrics): 24h requests, error rate, active sessions, top errors, manual cron runs.
+- [Browsing & Editing Data](https://docs.zonai.dev/dashboard/table-editor): Row grid with typed editors and foreign-key pickers. Edits fire extensions and push to live queries.
+
+## Deployment
+
+- [Building for Production](https://docs.zonai.dev/deployment/building-for-production)
+- [Running the Server](https://docs.zonai.dev/deployment/running-the-server)
+- [Server Binding](https://docs.zonai.dev/deployment/server-binding)
+- [Environment & Secrets](https://docs.zonai.dev/deployment/environment-and-secrets)
+- [Cross-Compilation](https://docs.zonai.dev/deployment/cross-compilation)
+- [Deploying to Fly.io](https://docs.zonai.dev/deployment/fly-io)
+
+## API
+
+- [OpenAPI Specification](https://docs.zonai.dev/api/openapi-spec): Fetch the live OpenAPI JSON from a running server.
+- [About](https://docs.zonai.dev/about): Docs site metadata.
+
+## Optional example shapes
+
+Create:
+
+```json
+{ "table": "tasks", "object": { "title": "Buy groceries", "isComplete": false } }
+```
+
+List with where (shorthand):
+
+```
+GET /db/list?body={"table":"tasks","where":{"isComplete":{"eq":false}},"limit":20}
+```
+
+Live stream one row (the connection stays open):
+
+```
+GET /db/stream?body={"table":"tasks","where":{"id":{"eq":"tk_abc123"}},"expand":[]}
+```
+
+Password sign-in:
+
+```json
+{ "table": "users", "email": "a@example.com", "password": "secret" }
+```
