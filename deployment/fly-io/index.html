@@ -1,0 +1,2928 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base href="/"/>
+    <meta charset="utf-8"/>
+    <title>Deploying to Fly.io | Zonai</title>
+    <meta property="og:title" content="Deploying to Fly.io | Zonai"/>
+    <link href="/favicon.png" rel="icon" type="image/png"/>
+    <meta name="description" content="A worked Fly.io deployment — cross-compiled bundle, persistent volume, and first-boot bootstrap."/>
+    <meta property="og:description" content="A worked Fly.io deployment — cross-compiled bundle, persistent volume, and first-boot bootstrap."/>
+    <style>
+      .docs .header-container {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        z-index: 10;
+        backdrop-filter: blur(8px);
+      }
+      .docs .main-container {
+        padding: 0;
+        margin-left: auto;
+        margin-right: auto;
+      }
+      @media all and (min-width: 768px) {
+        .docs .main-container {
+          padding-left: 1.25rem;
+          padding-right: 1.25rem;
+        }
+      }
+      .docs .main-container .sidebar-barrier {
+        position: absolute;
+        z-index: 9;
+        opacity: 0.0;
+        pointer-events: none;
+        background-color: var(--background);
+        inset: 0;
+      }
+      .docs .main-container .sidebar-barrier:has(+ .sidebar-container.open) {
+        opacity: 0.5;
+        pointer-events: auto;
+      }
+      .docs .main-container .sidebar-container {
+        position: fixed;
+        top: 4rem;
+        bottom: 0;
+        z-index: 10;
+        width: 17rem;
+        overflow-y: auto;
+        transition: transform 150ms ease-in-out;
+        transform: translateX(-100%);
+      }
+      @media all and (min-width: 768px) {
+        .docs .main-container .sidebar-container {
+          margin-left: -1.25rem;
+        }
+      }
+      @media all and (min-width: 1024px) {
+        .docs .main-container .sidebar-container {
+          margin-left: 0;
+          transform: translateX(0);
+        }
+      }
+      @media all and (max-width: 1023px) {
+        .docs .main-container .sidebar-container {
+          position: fixed;
+          top: 0;
+          border-right-style: solid;
+          border-right-color: #0000000d;
+          border-right-width: 1px;
+          background-color: var(--background);
+        }
+      }
+      .docs .main-container .sidebar-container.open {
+        transform: translateX(0);
+      }
+      .docs .main-container main {
+        position: relative;
+        padding-top: 4rem;
+      }
+      @media all and (min-width: 1024px) {
+        .docs .main-container main {
+          padding-left: 17rem;
+        }
+      }
+      .docs .main-container main > div {
+        display: flex;
+        padding-top: 2rem;
+        padding-left: 1rem;
+        padding-right: 1rem;
+        justify-content: center;
+      }
+      @media all and (min-width: 1024px) {
+        .docs .main-container main > div {
+          padding-left: 4rem;
+        }
+      }
+      .docs .main-container main > div .content-container {
+        min-width: 0;
+        max-width: 80rem;
+        padding-right: 0;
+        flex-grow: 1;
+        flex-shrink: 1;
+        flex-basis: 0%;
+      }
+      @media all and (min-width: 1280px) {
+        .docs .main-container main > div .content-container {
+          padding-right: 3rem;
+        }
+      }
+      .docs .main-container main > div .content-container .content-header {
+        margin-bottom: 2rem;
+        color: var(--content-headings);
+      }
+      .docs .main-container main > div .content-container .content-header h1 {
+        font-size: 2rem;
+        line-height: 2.25rem;
+      }
+      .docs .main-container main > div .content-container .content-header p {
+        margin-top: 0.75rem;
+        font-size: 1.25rem;
+        line-height: 1.25rem;
+      }
+      .docs .main-container main > div .content-container .content-header img {
+        margin-top: 1rem;
+        border-radius: 0.375rem;
+      }
+      .docs .main-container main > div .content-container .content-footer {
+        margin-top: 2rem;
+      }
+      .docs .main-container main > div aside.toc {
+        display: none;
+        position: relative;
+        width: 17rem;
+      }
+      @media all and (min-width: 1280px) {
+        .docs .main-container main > div aside.toc {
+          display: block;
+        }
+      }
+      .docs .main-container main > div aside.toc > div {
+        position: sticky;
+        top: 6rem;
+      }
+      .docs .main-container main > div aside.toc h3 {
+        margin-bottom: 0.5rem;
+        opacity: 0.75;
+        font-size: 0.875rem;
+        font-weight: 600;
+        line-height: 1.25rem;
+      }
+      .docs .main-container main > div aside.toc ul {
+        margin-top: 1rem;
+      }
+      .docs .main-container main > div aside.toc li {
+        margin-top: 0.5rem;
+        font-size: 14px;
+      }
+    </style>
+    <style>
+      .docs .content-header p {
+        opacity: 0.75;
+        line-height: 1.6em;
+      }
+      .content kbd {
+        padding: 0.0625rem 0.3125rem;
+        border: solid color-mix(in srgb, currentColor 25%, transparent) 1px;
+        border-radius: 5px;
+        font-family: monospace;
+        font-size: 0.8125em;
+        white-space: nowrap;
+      }
+      .header-home-link {
+        display: flex;
+        padding: 0.5rem 0.625rem;
+        border-radius: 8px;
+        opacity: 0.8;
+        align-items: center;
+        column-gap: 0.4rem;
+        color: inherit;
+        font-size: 0.875rem;
+        text-decoration: none;
+        white-space: nowrap;
+      }
+      .header-home-link:hover {
+        opacity: 1.0;
+        background-color: color-mix(in srgb, currentColor 5%, transparent);
+      }
+      @media screen and (max-width: 600px) {
+        .header-home-link .header-home-label {
+          display: none;
+        }
+      }
+      .header-icon-link {
+        display: flex;
+        padding: 0.6rem;
+        border-radius: 8px;
+        opacity: 0.8;
+        align-items: center;
+        color: inherit;
+      }
+      .header-icon-link:hover {
+        opacity: 1.0;
+        background-color: color-mix(in srgb, currentColor 5%, transparent);
+      }
+      .breadcrumbs {
+        display: flex;
+        margin-bottom: 0.625rem;
+        opacity: 0.6;
+        column-gap: 0.5rem;
+        font-size: 0.8125rem;
+      }
+      .breadcrumbs a {
+        color: inherit;
+        text-decoration: none;
+      }
+      .breadcrumbs a:hover {
+        text-decoration: underline;
+      }
+      .breadcrumbs .breadcrumb-sep {
+        opacity: 0.5;
+      }
+      .page-nav {
+        display: flex;
+        padding-top: 1.5rem;
+        margin-top: 3rem;
+        border-top-style: solid;
+        border-top-color: color-mix(in srgb, currentColor 12%, transparent);
+        border-top-width: 1px;
+        justify-content: space-between;
+        column-gap: 1rem;
+      }
+      .page-nav .page-nav-link {
+        display: flex;
+        max-width: 48%;
+        padding: 0.75rem 1rem;
+        border: solid color-mix(in srgb, currentColor 12%, transparent) 1px;
+        border-radius: 10px;
+        transition: all 150ms ease-in-out;
+        flex-direction: column;
+        row-gap: 0.125rem;
+        color: inherit;
+        text-decoration: none;
+      }
+      .page-nav .page-nav-link:hover {
+        border: solid color-mix(in srgb, currentColor 28%, transparent) 1px;
+        background-color: color-mix(in srgb, currentColor 4%, transparent);
+      }
+      .page-nav .page-nav-link .page-nav-label {
+        opacity: 0.55;
+        font-size: 0.6875rem;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+      }
+      .page-nav .page-nav-link .page-nav-title {
+        color: var(--primary);
+        font-size: 0.9375rem;
+        font-weight: 600;
+      }
+      .page-nav .page-nav-next {
+        margin-left: auto;
+        text-align: right;
+      }
+    </style>
+    <link href="https://docs.zonai.dev/deployment/fly-io/" rel="canonical"/>
+    <meta property="og:url" content="https://docs.zonai.dev/deployment/fly-io/"/>
+    <meta property="og:type" content="article"/>
+    <meta property="og:site_name" content="Zonai"/>
+    <meta name="twitter:card" content="summary_large_image"/>
+    <meta name="keywords" content="Dart, Flutter, backend, BaaS, SQLite, authentication, streaming, live queries, zonai_client, Zonai"/>
+    <meta property="og:image" content="https://docs.zonai.dev/images/og.png"/>
+    <!--$-->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <style>
+      .header {
+        display: flex;
+        height: 4rem;
+        padding: 0.25rem 1rem;
+        margin-left: auto;
+        margin-right: auto;
+        border-bottom-style: solid;
+        border-bottom-color: #0000000d;
+        border-bottom-width: 1px;
+        align-items: center;
+        column-gap: 1rem;
+      }
+      @media all and (min-width: 768px) {
+        .header {
+          padding-left: 2.5rem;
+          padding-right: 2.5rem;
+        }
+      }
+      .header .header-title {
+        display: inline-flex;
+        align-items: center;
+        column-gap: 0.75rem;
+        flex-basis: 17rem;
+      }
+      .header .header-title img {
+        width: auto;
+        height: 1.5rem;
+      }
+      .header .header-title span {
+        font-weight: 700;
+      }
+      .header .header-content {
+        display: flex;
+        justify-content: end;
+        flex-grow: 1;
+      }
+      .header .header-items {
+        display: flex;
+        column-gap: 0.25rem;
+      }
+    </style>
+    <style>
+      .sidebar-toggle-button {
+        display: none;
+        width: 2rem;
+        height: 2rem;
+        justify-content: center;
+        align-items: center;
+      }
+      @media all and (max-width: 1024px) {
+        [data-has-sidebar] .sidebar-toggle-button {
+          display: flex;
+        }
+      }
+    </style>
+    <style>
+      .search-trigger {
+        display: flex;
+        height: 2rem;
+        padding-left: 0.7rem;
+        padding-right: 0.7rem;
+        border: solid color-mix(in srgb, currentColor 15%, transparent) 1px;
+        border-radius: 8px;
+        opacity: 0.8;
+        cursor: pointer;
+        transition: all 150ms ease-in-out;
+        align-items: center;
+        column-gap: 0.5rem;
+        color: inherit;
+        font-size: 0.8125rem;
+        background-color: transparent;
+      }
+      .search-trigger:hover {
+        opacity: 1.0;
+        background-color: color-mix(in srgb, currentColor 6%, transparent);
+      }
+      .search-trigger .search-trigger-label {
+        display: none;
+      }
+      .search-trigger .search-trigger-keys {
+        display: none;
+        opacity: 0.7;
+        font-family: monospace;
+        font-size: 0.6875rem;
+      }
+      @media all and (min-width: 640px) {
+        .search-trigger {
+          width: 12rem;
+          justify-content: start;
+        }
+        .search-trigger .search-trigger-label {
+          display: block;
+        }
+        .search-trigger .search-trigger-keys {
+          display: block;
+          margin-left: auto;
+        }
+      }
+      .search-dialog {
+        display: none;
+        width: 100%;
+        height: 100%;
+        max-width: initial;
+        max-height: initial;
+        padding: 3rem 1rem;
+        margin: 0;
+        border: none;
+        overflow: hidden;
+        color: inherit;
+        background-color: transparent;
+      }
+      .search-dialog[open] {
+        display: flex;
+        justify-content: center;
+        align-items: start;
+      }
+      .search-dialog::backdrop {
+        background-color: rgba(15, 23, 42, .45);
+        backdrop-filter: blur(4px);
+      }
+      @media all and (min-width: 768px) {
+        .search-dialog {
+          padding: 6rem 1rem 3rem 1rem;
+        }
+      }
+      .search-panel {
+        display: flex;
+        width: 100%;
+        max-width: 40rem;
+        max-height: 100%;
+        border: solid color-mix(in srgb, currentColor 12%, transparent) 1px;
+        border-radius: 14px;
+        overflow: hidden;
+        flex-direction: column;
+        background-color: var(--background);
+        box-shadow: 0 24px 60px rgba(0,0,0,.28);
+      }
+      .search-field {
+        display: flex;
+        height: 3.5rem;
+        padding-left: 1rem;
+        padding-right: 1rem;
+        border-bottom-style: solid;
+        border-bottom-color: color-mix(in srgb, currentColor 12%, transparent);
+        border-bottom-width: 1px;
+        align-items: center;
+        column-gap: 0.75rem;
+      }
+      .search-field svg {
+        opacity: 0.5;
+        flex-shrink: 0;
+      }
+      .search-field input {
+        min-width: 0;
+        border: none;
+        outline-style: none;
+        flex-grow: 1;
+        color: inherit;
+        font-family: inherit;
+        font-size: 1rem;
+        background-color: transparent;
+      }
+      .search-dismiss {
+        padding: 0.25rem 0.5rem;
+        border: solid color-mix(in srgb, currentColor 18%, transparent) 1px;
+        border-radius: 6px;
+        opacity: 0.6;
+        cursor: pointer;
+        flex-shrink: 0;
+        color: inherit;
+        font-size: 0.6875rem;
+        background-color: transparent;
+      }
+      .search-dismiss:hover {
+        opacity: 1.0;
+      }
+      .search-results {
+        padding: 0.5rem;
+        overflow-y: auto;
+      }
+      .search-empty {
+        padding: 1.5rem;
+        opacity: 0.7;
+        text-align: center;
+        font-size: 0.875rem;
+      }
+      .search-empty .search-hint {
+        display: block;
+        margin-top: 0.5rem;
+        opacity: 0.8;
+        font-size: 0.8125rem;
+      }
+      .search-hit-list {
+        padding: 0;
+        margin: 0;
+        list-style-type: none;
+      }
+      .search-hit {
+        display: block;
+        padding: 0.625rem 0.875rem;
+        border-radius: 10px;
+        color: inherit;
+        text-decoration: none;
+      }
+      .search-hit[data-selected] {
+        background-color: color-mix(in srgb, currentColor 8%, transparent);
+      }
+      .search-hit .search-hit-crumb {
+        display: flex;
+        opacity: 0.6;
+        column-gap: 0.375rem;
+        font-size: 0.6875rem;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+      }
+      .search-hit .search-hit-crumb .search-hit-sep {
+        opacity: 0.5;
+      }
+      .search-hit .search-hit-heading {
+        margin-top: 0.125rem;
+        font-size: 0.9375rem;
+        font-weight: 600;
+      }
+      .search-hit .search-hit-snippet {
+        margin-top: 0.1875rem;
+        opacity: 0.72;
+        font-size: 0.8125rem;
+        line-height: 1.4em;
+      }
+      .search-hit mark {
+        padding-left: 1px;
+        padding-right: 1px;
+        border-radius: 3px;
+        color: var(--primary);
+        font-weight: 600;
+        background-color: color-mix(in srgb, currentColor 18%, transparent);
+      }
+      .search-footer {
+        display: flex;
+        padding: 0.625rem 1rem;
+        border-top-style: solid;
+        border-top-color: color-mix(in srgb, currentColor 12%, transparent);
+        border-top-width: 1px;
+        opacity: 0.55;
+        column-gap: 1rem;
+        font-size: 0.6875rem;
+      }
+      .search-footer kbd {
+        padding-left: 0.25rem;
+        padding-right: 0.25rem;
+        margin-right: 0.25rem;
+        border: solid color-mix(in srgb, currentColor 20%, transparent) 1px;
+        border-radius: 4px;
+        font-family: monospace;
+      }
+    </style>
+    <script id="theme-script">
+                  let userTheme = window.localStorage.getItem('jaspr:theme');
+                  if (userTheme != null) {
+                    document.documentElement.setAttribute('data-theme', userTheme);
+                  } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                    document.documentElement.setAttribute('data-theme', 'dark');
+                  } else {
+                    document.documentElement.setAttribute('data-theme', 'light');
+                  }
+                
+    </script>
+    <style>
+      .docs-sidebar {
+        position: relative;
+        padding: 0.75rem 0.75rem 2rem 0.5rem;
+        font-size: 0.875rem;
+        line-height: 1.25rem;
+      }
+      @media all and (min-width: 1024px) {
+        .docs-sidebar {
+          padding-top: 1rem;
+        }
+      }
+      .docs-sidebar .sidebar-close {
+        position: absolute;
+        top: 0.75rem;
+        right: 0.75rem;
+        border: unset;
+        cursor: pointer;
+        color: inherit;
+        background-color: transparent;
+      }
+      @media all and (min-width: 1024px) {
+        .docs-sidebar .sidebar-close {
+          display: none;
+        }
+      }
+      .docs-sidebar ul {
+        padding: 0;
+        margin: 0;
+        list-style-type: none;
+      }
+      .docs-sidebar .docs-sidebar-top {
+        margin-bottom: 0.5rem;
+      }
+      .docs-sidebar .docs-sidebar-link {
+        display: flex;
+        padding: 0.375rem 0.75rem;
+        margin-bottom: 1px;
+        border-radius: 0.375rem;
+        opacity: 0.75;
+        transition: all 150ms ease-in-out;
+        align-items: center;
+        column-gap: 0.5rem;
+        color: inherit;
+        text-decoration: none;
+      }
+      .docs-sidebar .docs-sidebar-link:hover {
+        opacity: 1.0;
+        background-color: color-mix(in srgb, currentColor 6%, transparent);
+      }
+      .docs-sidebar .docs-sidebar-link.active {
+        opacity: 1.0;
+        color: var(--primary);
+        font-weight: 600;
+        background-color: color-mix(in srgb, currentColor 14%, transparent);
+      }
+      .docs-sidebar .docs-sidebar-link span:first-child {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .docs-sidebar .docs-sidebar-badge {
+        padding-left: 0.3125rem;
+        padding-right: 0.3125rem;
+        border-radius: 999px;
+        flex-shrink: 0;
+        color: var(--primary);
+        font-size: 0.625rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+        background-color: color-mix(in srgb, currentColor 15%, transparent);
+      }
+      .docs-sidebar .docs-sidebar-group > ul {
+        padding-left: 0.5rem;
+        margin-left: 1.0625rem;
+        margin-bottom: 0.5rem;
+        border-left-style: solid;
+        border-left-color: color-mix(in srgb, currentColor 12%, transparent);
+        border-left-width: 1px;
+      }
+      .docs-sidebar .docs-sidebar-group[open] .docs-sidebar-chevron svg {
+        transform: rotate(90deg);
+      }
+      .docs-sidebar .docs-sidebar-summary {
+        display: flex;
+        padding: 0.4375rem 0.5rem;
+        border-radius: 0.375rem;
+        cursor: pointer;
+        user-select: none;
+        -webkit-user-select: none;
+        align-items: center;
+        column-gap: 0.5rem;
+        list-style-type: none;
+        font-weight: 600;
+      }
+      .docs-sidebar .docs-sidebar-summary::-webkit-details-marker {
+        display: none;
+      }
+      .docs-sidebar .docs-sidebar-summary:hover {
+        background-color: color-mix(in srgb, currentColor 6%, transparent);
+      }
+      .docs-sidebar .docs-sidebar-summary .docs-sidebar-icon {
+        display: flex;
+        opacity: 0.6;
+        flex-shrink: 0;
+      }
+      .docs-sidebar .docs-sidebar-summary .docs-sidebar-title {
+        flex-grow: 1;
+      }
+      .docs-sidebar .docs-sidebar-summary .docs-sidebar-chevron {
+        display: flex;
+        opacity: 0.45;
+      }
+      .docs-sidebar .docs-sidebar-summary .docs-sidebar-chevron svg {
+        transition: transform 150ms ease-in-out;
+      }
+    </style>
+    <style>
+      :root {
+        --primary: oklch(0.623 0.214 259.815);
+        --background: oklch(0.984 0.003 247.858);
+        --text: oklch(0.373 0.034 259.733);
+        --content-headings: oklch(0.21 0.034 264.665);
+        --content-lead: oklch(0.446 0.03 256.802);
+        --content-links: oklch(0.21 0.034 264.665);
+        --content-bold: oklch(0.21 0.034 264.665);
+        --content-counters: oklch(0.551 0.027 264.364);
+        --content-bullets: oklch(0.872 0.01 258.338);
+        --content-hr: oklch(0.928 0.006 264.531);
+        --content-quotes: oklch(0.21 0.034 264.665);
+        --content-quote-borders: oklch(0.928 0.006 264.531);
+        --content-captions: oklch(0.551 0.027 264.364);
+        --content-kbd: oklch(0.21 0.034 264.665);
+        --content-kbd-shadows: oklch(0.21 0.034 264.665);
+        --content-code: oklch(0.21 0.034 264.665);
+        --content-pre-code: oklch(0.928 0.006 264.531);
+        --content-pre-bg: oklch(0.278 0.033 256.848);
+        --content-th-borders: oklch(0.872 0.01 258.338);
+        --content-td-borders: oklch(0.928 0.006 264.531);
+      }
+      :root[data-theme="dark"] {
+        --primary: oklch(0.809 0.105 251.813);
+        --background: oklch(0.141 0.005 285.823);
+        --text: oklch(0.928 0.006 264.531);
+        --content-headings: white;
+        --content-lead: oklch(0.707 0.022 261.325);
+        --content-links: white;
+        --content-bold: white;
+        --content-counters: oklch(0.707 0.022 261.325);
+        --content-bullets: oklch(0.446 0.03 256.802);
+        --content-hr: oklch(0.373 0.034 259.733);
+        --content-quotes: oklch(0.967 0.003 264.542);
+        --content-quote-borders: oklch(0.373 0.034 259.733);
+        --content-captions: oklch(0.707 0.022 261.325);
+        --content-kbd: white;
+        --content-kbd-shadows: white;
+        --content-code: white;
+        --content-pre-code: oklch(0.872 0.01 258.338);
+        --content-pre-bg: rgb(0 0 0 / 50%);
+        --content-th-borders: oklch(0.446 0.03 256.802);
+        --content-td-borders: oklch(0.373 0.034 259.733);
+      }
+      *, :after, :before {
+        box-sizing: border-box;
+        border: solid #e5e7eb 0;
+      }
+      :host,html {
+        line-height: 1.5em;
+        -webkit-text-size-adjust: 100%;
+        -moz-tab-size: 4;
+        tab-size: 4;
+        font-feature-settings: normal;
+        font-variation-settings: normal;
+        -webkit-tap-highlight-color: transparent;
+      }
+      body {
+        margin: 0;
+        line-height: inherit;
+        -webkit-font-smoothing: antialiased;
+      }
+      hr {
+        height: 0;
+        border-top-style: solid;
+        border-top-width: 1px;
+        color: inherit;
+      }
+      a {
+        color: inherit;
+        text-decoration: inherit;
+      }
+      b, strong {
+        font-weight: bolder;
+      }
+      code, kbd, pre, samp {
+        font-size: 1em;
+        font-feature-settings: normal;
+        font-variation-settings: normal;
+      }
+      small {
+        font-size: 80%;
+      }
+      sub, sup {
+        position: relative;
+        font-size: 75%;
+        line-height: 0;
+        vertical-align: baseline;
+      }
+      sub {
+        position: relative;
+        bottom: -0.25em;
+      }
+      sup {
+        position: relative;
+        top: -0.5em;
+      }
+      table {
+        border: solid inherit;
+        text-indent: 0;
+        border-collapse: collapse;
+      }
+      button, input, optgroup, select, textarea {
+        padding: 0;
+        margin: 0;
+        color: inherit;
+        font-family: inherit;
+        font-size: 100%;
+        font-weight: inherit;
+        letter-spacing: inherit;
+        line-height: inherit;
+        font-feature-settings: inherit;
+        font-variation-settings: inherit;
+      }
+      button, select {
+        text-transform: none;
+      }
+      button, input[type=button], input[type=reset], input[type=submit] {
+        -webkit-appearance: button;
+        background-color: transparent;
+        background-image: none;
+      }
+      :-moz-focusring {
+        outline: auto;
+      }
+      :-moz-ui-invalid {
+        box-shadow: none;
+      }
+      progress {
+        vertical-align: baseline;
+      }
+      ::-webkit-inner-spin-button, ::-webkit-outer-spin-button {
+        height: auto;
+      }
+      [type=search] {
+        -webkit-appearance: textfield;
+        outline-offset: -2px;
+      }
+      ::-webkit-search-decoration {
+        -webkit-appearance: none;
+      }
+      ::-webkit-file-upload-button {
+        -webkit-appearance: button;
+        font: inherit;
+      }
+      summary {
+        display: list-item;
+      }
+      blockquote, dd, dl, figure, h1, h2, h3, h4, h5, h6, hr, p, pre {
+        margin: 0;
+      }
+      fieldset {
+        margin: 0;
+      }
+      fieldset, legend {
+        padding: 0;
+      }
+      menu, ol, ul {
+        padding: 0;
+        margin: 0;
+        list-style-type: none;
+      }
+      dialog {
+        padding: 0;
+      }
+      textarea {
+        resize: vertical;
+      }
+      input::placeholder, textarea::placeholder {
+        opacity: 1.0;
+        color: #9ca3af;
+      }
+      [role=button], button {
+        cursor: pointer;
+      }
+      :disabled {
+        cursor: default;
+      }
+      audio, canvas, embed, iframe, img, object, svg, video {
+        display: block;
+        vertical-align: middle;
+      }
+      img, video {
+        height: auto;
+        max-width: 100%;
+      }
+      :root {
+        --content-font: 'Open Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+        --content-code-font: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', 'Liberation Mono', 'Courier New', monospace;
+      }
+      :host,html {
+        font-family: var(--content-font);
+      }
+      code, kbd, pre, samp {
+        font-family: var(--content-code-font);
+      }
+      body {
+        color: var(--text);
+        background-color: var(--background);
+      }
+      .content {
+        color: var(--text);
+        font-size: 1rem;
+        line-height: 1.75em;
+      }
+      .content :where(a):not(:where([class~=not-content],[class~=not-content] *)) {
+        color: var(--content-links);
+        font-weight: 500;
+        text-decoration: underline;
+      }
+      .content :where(strong):not(:where([class~=not-content],[class~=not-content] *)) {
+        color: var(--content-bold);
+        font-weight: 600;
+      }
+      .content :where(a strong):not(:where([class~=not-content],[class~=not-content] *)) {
+        color: inherit;
+      }
+      .content :where(blockquote strong):not(:where([class~=not-content],[class~=not-content] *)) {
+        color: inherit;
+      }
+      .content :where(thead th strong):not(:where([class~=not-content],[class~=not-content] *)) {
+        color: inherit;
+      }
+      .content :where(ol):not(:where([class~=not-content],[class~=not-content] *)) {
+        list-style-type: decimal;
+      }
+      .content :where(ol[type="A"]):not(:where([class~=not-content],[class~=not-content] *)) {
+        list-style-type: upper-alpha;
+      }
+      .content :where(ol[type="a"]):not(:where([class~=not-content],[class~=not-content] *)) {
+        list-style-type: lower-alpha;
+      }
+      .content :where(ol[type="A" s]):not(:where([class~=not-content],[class~=not-content] *)) {
+        list-style-type: upper-alpha;
+      }
+      .content :where(ol[type="a" s]):not(:where([class~=not-content],[class~=not-content] *)) {
+        list-style-type: lower-alpha;
+      }
+      .content :where(ol[type="I"]):not(:where([class~=not-content],[class~=not-content] *)) {
+        list-style-type: upper-roman;
+      }
+      .content :where(ol[type="i"]):not(:where([class~=not-content],[class~=not-content] *)) {
+        list-style-type: lower-roman;
+      }
+      .content :where(ol[type="I" s]):not(:where([class~=not-content],[class~=not-content] *)) {
+        list-style-type: upper-roman;
+      }
+      .content :where(ol[type="i" s]):not(:where([class~=not-content],[class~=not-content] *)) {
+        list-style-type: lower-roman;
+      }
+      .content :where(ol[type="1"]):not(:where([class~=not-content],[class~=not-content] *)) {
+        list-style-type: decimal;
+      }
+      .content :where(ul):not(:where([class~=not-content],[class~=not-content] *)) {
+        list-style-type: disc;
+      }
+      .content :where(ol > li::marker):not(:where([class~=not-content],[class~=not-content] *)) {
+        color: var(--content-counters);
+        font-weight: 400;
+      }
+      .content :where(ul > li::marker):not(:where([class~=not-content],[class~=not-content] *)) {
+        color: var(--content-bullets);
+      }
+      .content :where(dt):not(:where([class~=not-content],[class~=not-content] *)) {
+        color: var(--content-headings);
+        font-weight: 600;
+      }
+      .content :where(hr):not(:where([class~=not-content],[class~=not-content] *)) {
+        border: solid var(--content-hr);
+        border-top-width: 1px;
+      }
+      .content :where(blockquote):not(:where([class~=not-content],[class~=not-content] *)) {
+        color: var(--content-quotes);
+        font-weight: 500;
+        font-style: italic;
+        border-inline-start-width: 0.25rem;
+        border-inline-start-color: var(--content-quote-borders);
+        quotes: "\201C""\201D""\2018""\2019";
+      }
+      .content :where(blockquote p:first-of-type::before):not(:where([class~=not-content],[class~=not-content] *)) {
+        content: open-quote;
+      }
+      .content :where(blockquote p:last-of-type::after):not(:where([class~=not-content],[class~=not-content] *)) {
+        content: close-quote;
+      }
+      .content :where(h1):not(:where([class~=not-content],[class~=not-content] *)) {
+        color: var(--content-headings);
+        font-weight: 800;
+      }
+      .content :where(h1 strong):not(:where([class~=not-content],[class~=not-content] *)) {
+        color: inherit;
+        font-weight: 900;
+      }
+      .content :where(h2):not(:where([class~=not-content],[class~=not-content] *)) {
+        color: var(--content-headings);
+        font-weight: 700;
+      }
+      .content :where(h2 strong):not(:where([class~=not-content],[class~=not-content] *)) {
+        color: inherit;
+        font-weight: 800;
+      }
+      .content :where(h3):not(:where([class~=not-content],[class~=not-content] *)) {
+        color: var(--content-headings);
+        font-weight: 600;
+      }
+      .content :where(h3 strong):not(:where([class~=not-content],[class~=not-content] *)) {
+        color: inherit;
+        font-weight: 700;
+      }
+      .content :where(h4):not(:where([class~=not-content],[class~=not-content] *)) {
+        color: var(--content-headings);
+        font-weight: 600;
+      }
+      .content :where(h4 strong):not(:where([class~=not-content],[class~=not-content] *)) {
+        color: inherit;
+        font-weight: 700;
+      }
+      .content :where(picture):not(:where([class~=not-content],[class~=not-content] *)) {
+        display: block;
+      }
+      .content :where(kbd):not(:where([class~=not-content],[class~=not-content] *)) {
+        color: var(--content-kbd);
+        font-family: inherit;
+        font-weight: 500;
+      }
+      .content :where(code):not(:where([class~=not-content],[class~=not-content] *)) {
+        color: var(--content-code);
+        font-weight: 600;
+      }
+      .content :where(code::before):not(:where([class~=not-content],[class~=not-content] *)) {
+        content: "`";
+      }
+      .content :where(code::after):not(:where([class~=not-content],[class~=not-content] *)) {
+        content: "`";
+      }
+      .content :where(a code):not(:where([class~=not-content],[class~=not-content] *)) {
+        color: inherit;
+      }
+      .content :where(h1 code):not(:where([class~=not-content],[class~=not-content] *)) {
+        color: inherit;
+      }
+      .content :where(h2 code):not(:where([class~=not-content],[class~=not-content] *)) {
+        color: inherit;
+      }
+      .content :where(h3 code):not(:where([class~=not-content],[class~=not-content] *)) {
+        color: inherit;
+      }
+      .content :where(h4 code):not(:where([class~=not-content],[class~=not-content] *)) {
+        color: inherit;
+      }
+      .content :where(blockquote code):not(:where([class~=not-content],[class~=not-content] *)) {
+        color: inherit;
+      }
+      .content :where(thead th code):not(:where([class~=not-content],[class~=not-content] *)) {
+        color: inherit;
+      }
+      .content :where(pre):not(:where([class~=not-content],[class~=not-content] *)) {
+        overflow-x: auto;
+        color: var(--content-pre-code);
+        font-weight: 400;
+        background-color: var(--content-pre-bg);
+      }
+      .content :where(pre code):not(:where([class~=not-content],[class~=not-content] *)) {
+        padding: 0;
+        border: solid 0;
+        border-radius: 0;
+        color: inherit;
+        font-size: inherit;
+        font-weight: inherit;
+        line-height: inherit;
+        background-color: transparent;
+      }
+      .content :where(pre code::before):not(:where([class~=not-content],[class~=not-content] *)) {
+        content: none;
+      }
+      .content :where(pre code::after):not(:where([class~=not-content],[class~=not-content] *)) {
+        content: none;
+      }
+      .content :where(table):not(:where([class~=not-content],[class~=not-content] *)) {
+        width: 100%;
+        margin-top: 2em;
+        margin-bottom: 2em;
+        table-layout: auto;
+      }
+      .content :where(thead):not(:where([class~=not-content],[class~=not-content] *)) {
+        border-bottom-style: solid;
+        border-bottom-color: var(--content-th-borders);
+        border-bottom-width: 1px;
+      }
+      .content :where(thead th):not(:where([class~=not-content],[class~=not-content] *)) {
+        color: var(--content-headings);
+        font-weight: 600;
+        vertical-align: bottom;
+      }
+      .content :where(tbody tr):not(:where([class~=not-content],[class~=not-content] *)) {
+        border-bottom-style: solid;
+        border-bottom-color: var(--content-td-borders);
+        border-bottom-width: 1px;
+      }
+      .content :where(tbody tr:last-child):not(:where([class~=not-content],[class~=not-content] *)) {
+        border-bottom-style: solid;
+        border-bottom-width: 0;
+      }
+      .content :where(tbody td):not(:where([class~=not-content],[class~=not-content] *)) {
+        vertical-align: baseline;
+      }
+      .content :where(tfoot):not(:where([class~=not-content],[class~=not-content] *)) {
+        border-top-style: solid;
+        border-top-color: var(--content-th-borders);
+        border-top-width: 1px;
+      }
+      .content :where(tfoot td):not(:where([class~=not-content],[class~=not-content] *)) {
+        vertical-align: top;
+      }
+      .content :where(th, td):not(:where([class~=not-content],[class~=not-content] *)) {
+        text-align: start;
+      }
+      .content :where(figcaption):not(:where([class~=not-content],[class~=not-content] *)) {
+        color: var(--content-captions);
+      }
+      .content :where(p):not(:where([class~=not-content],[class~=not-content] *)) {
+        margin-top: 1.25em;
+        margin-bottom: 1.25em;
+      }
+      .content :where(blockquote):not(:where([class~=not-content],[class~=not-content] *)) {
+        padding-left: 1em;
+        margin-top: 1.6em;
+        margin-bottom: 1.6em;
+      }
+      .content :where(h1):not(:where([class~=not-content],[class~=not-content] *)) {
+        margin-top: 0;
+        margin-bottom: 0.88em;
+        font-size: 2.25em;
+        line-height: 1.11em;
+      }
+      .content :where(h2):not(:where([class~=not-content],[class~=not-content] *)) {
+        margin-top: 1.5em;
+        margin-bottom: 1em;
+        font-size: 1.5em;
+        line-height: 1.33em;
+      }
+      .content :where(h3):not(:where([class~=not-content],[class~=not-content] *)) {
+        margin-top: 1.6em;
+        margin-bottom: 0.6em;
+        font-size: 1.25em;
+        line-height: 1.6em;
+      }
+      .content :where(h4):not(:where([class~=not-content],[class~=not-content] *)) {
+        margin-top: 2em;
+        margin-bottom: 0.5em;
+        line-height: 1.5em;
+      }
+      .content :where(img):not(:where([class~=not-content],[class~=not-content] *)) {
+        margin-top: 2em;
+        margin-bottom: 2em;
+      }
+      .content :where(picture):not(:where([class~=not-content],[class~=not-content] *)) {
+        margin-top: 2em;
+        margin-bottom: 2em;
+      }
+      .content :where(picture > img):not(:where([class~=not-content],[class~=not-content] *)) {
+        margin-top: 0;
+        margin-bottom: 0;
+      }
+      .content :where(video):not(:where([class~=not-content],[class~=not-content] *)) {
+        margin-top: 2em;
+        margin-bottom: 2em;
+      }
+      .content :where(kbd):not(:where([class~=not-content],[class~=not-content] *)) {
+        padding: 0.1875rem 0.375rem 0.1875rem 0.375rem;
+        border-radius: 0.3125rem;
+        font-size: 0.875em;
+      }
+      .content :where(code):not(:where([class~=not-content],[class~=not-content] *)) {
+        font-size: 0.875em;
+      }
+      .content :where(h2 code):not(:where([class~=not-content],[class~=not-content] *)) {
+        font-size: 0.875em;
+      }
+      .content :where(h3 code):not(:where([class~=not-content],[class~=not-content] *)) {
+        font-size: 0.9em;
+      }
+      .content :where(pre):not(:where([class~=not-content],[class~=not-content] *)) {
+        padding: 0.857em 1.14em 0.857em 1.14em;
+        margin-top: 1.71em;
+        margin-bottom: 1.71em;
+        border-radius: 0.375rem;
+        font-size: 0.875em;
+        line-height: 1.71em;
+      }
+      .content :where(ol):not(:where([class~=not-content],[class~=not-content] *)) {
+        padding-left: 1.625em;
+        margin-top: 1.25em;
+        margin-bottom: 1.25em;
+      }
+      .content :where(ul):not(:where([class~=not-content],[class~=not-content] *)) {
+        padding-left: 1.625em;
+        margin-top: 1.25em;
+        margin-bottom: 1.25em;
+      }
+      .content :where(li):not(:where([class~=not-content],[class~=not-content] *)) {
+        margin-top: 0.5em;
+        margin-bottom: 0.5em;
+      }
+      .content :where(ol > li):not(:where([class~=not-content],[class~=not-content] *)) {
+        padding-left: 0.375em;
+      }
+      .content :where(ul > li):not(:where([class~=not-content],[class~=not-content] *)) {
+        padding-left: 0.375em;
+      }
+      .content :where(> ul > li p):not(:where([class~=not-content],[class~=not-content] *)) {
+        margin-top: 0.75em;
+        margin-bottom: 0.75em;
+      }
+      .content :where(> ul > li > p:first-child):not(:where([class~=not-content],[class~=not-content] *)) {
+        margin-top: 1.25em;
+      }
+      .content :where(> ul > li > p:last-child):not(:where([class~=not-content],[class~=not-content] *)) {
+        margin-bottom: 1.25em;
+      }
+      .content :where(> ol > li > p:first-child):not(:where([class~=not-content],[class~=not-content] *)) {
+        margin-top: 1.25em;
+      }
+      .content :where(> ol > li > p:last-child):not(:where([class~=not-content],[class~=not-content] *)) {
+        margin-bottom: 1.25em;
+      }
+      .content :where(ul ul, ul ol, ol ul, ol ol):not(:where([class~=not-content],[class~=not-content] *)) {
+        margin-top: 0.75em;
+        margin-bottom: 0.75em;
+      }
+      .content :where(dl):not(:where([class~=not-content],[class~=not-content] *)) {
+        margin-top: 1.25em;
+        margin-bottom: 1.25em;
+      }
+      .content :where(dt):not(:where([class~=not-content],[class~=not-content] *)) {
+        margin-top: 1.25em;
+      }
+      .content :where(dd):not(:where([class~=not-content],[class~=not-content] *)) {
+        padding-left: 1.625em;
+        margin-top: 0.5em;
+      }
+      .content :where(hr):not(:where([class~=not-content],[class~=not-content] *)) {
+        margin-top: 3em;
+        margin-bottom: 3em;
+      }
+      .content :where(hr + *):not(:where([class~=not-content],[class~=not-content] *)) {
+        margin-top: 0;
+      }
+      .content :where(h2 + *):not(:where([class~=not-content],[class~=not-content] *)) {
+        margin-top: 0;
+      }
+      .content :where(h3 + *):not(:where([class~=not-content],[class~=not-content] *)) {
+        margin-top: 0;
+      }
+      .content :where(h4 + *):not(:where([class~=not-content],[class~=not-content] *)) {
+        margin-top: 0;
+      }
+      .content :where(table):not(:where([class~=not-content],[class~=not-content] *)) {
+        font-size: 0.875em;
+        line-height: 1.71em;
+      }
+      .content :where(thead th):not(:where([class~=not-content],[class~=not-content] *)) {
+        padding-left: 0.57em;
+        padding-right: 0.57em;
+        padding-bottom: 0.57em;
+      }
+      .content :where(thead th:first-child):not(:where([class~=not-content],[class~=not-content] *)) {
+        padding-left: 0;
+      }
+      .content :where(thead th:last-child):not(:where([class~=not-content],[class~=not-content] *)) {
+        padding-right: 0;
+      }
+      .content :where(tbody td, tfoot td):not(:where([class~=not-content],[class~=not-content] *)) {
+        padding: 0.57em 0.57em 0.57em 0.57em;
+      }
+      .content :where(tbody td:first-child, tfoot td:first-child):not(:where([class~=not-content],[class~=not-content] *)) {
+        padding-left: 0;
+      }
+      .content :where(tbody td:last-child, tfoot td:last-child):not(:where([class~=not-content],[class~=not-content] *)) {
+        padding-right: 0;
+      }
+      .content :where(figure):not(:where([class~=not-content],[class~=not-content] *)) {
+        margin-top: 2em;
+        margin-bottom: 2em;
+      }
+      .content :where(figure > *):not(:where([class~=not-content],[class~=not-content] *)) {
+        margin-top: 0;
+        margin-bottom: 0;
+      }
+      .content :where(figcaption):not(:where([class~=not-content],[class~=not-content] *)) {
+        margin-top: 0.857em;
+        font-size: 0.875em;
+        line-height: 1.42em;
+      }
+      .content :where(> :first-child):not(:where([class~=not-content],[class~=not-content] *)) {
+        margin-top: 0;
+      }
+      .content :where(> :last-child):not(:where([class~=not-content],[class~=not-content] *)) {
+        margin-bottom: 0;
+      }
+    </style>
+    <style>
+      :is(h1, h2, h3, h4, h5, h6)[anchor="true"] {
+        display: flex;
+        align-items: baseline;
+        column-gap: 0.5rem;
+      }
+      :is(h1, h2, h3, h4, h5, h6)[anchor="true"] > a {
+        opacity: 0.0;
+        transition: opacity 300ms;
+        font-size: 0.8em;
+        text-decoration: none;
+      }
+      :is(h1, h2, h3, h4, h5, h6)[anchor="true"]:hover > a {
+        opacity: 0.8;
+      }
+      :is(h1, h2, h3, h4, h5, h6)[anchor="true"] > a:hover {
+        opacity: 1.0;
+      }
+    </style>
+    <!--/-->
+    <script src="main.client.dart.js" defer></script>
+    <style>
+      .callout {
+        display: flex;
+        padding: 1rem 1.25rem;
+        margin-bottom: 0.75rem;
+        border: solid 1px;
+        border-radius: 0.75rem;
+        column-gap: 1rem;
+      }
+      .callout span:first-child {
+        padding-top: 0.25rem;
+        flex-shrink: 0;
+      }
+      .callout span:last-child > p {
+        margin: 0;
+      }
+      .callout.callout-info {
+        border: solid rgba(14,165,233,.2);
+        color: rgb(3 105 161);
+        background-color: rgba(186, 230, 253, .1);
+      }
+      .callout.callout-warning {
+        border: solid rgba(234,179,8,.2);
+        color: rgb(161 98 7);
+        background-color: hsla(53,98%,77%,.1);
+      }
+      .callout.callout-error {
+        border: solid rgba(239,68,68,.2);
+        color: rgb(185 28 28);
+        background-color: hsla(0,96%,89%,.1);
+      }
+      .callout.callout-success {
+        border: solid rgba(34,197,94,.2);
+        color: oklch(0.527 0.154 150.069);
+        background-color: rgba(187,247,208,.1);
+      }
+      [data-theme="dark"] .callout.callout-info {
+        border: solid rgba(14,165,233,.5);
+        color: inherit;
+        background-color: rgba(14,165,233,.1);
+      }
+      [data-theme="dark"] .callout.callout-warning {
+        border: solid rgba(234,179,8,.5);
+        color: inherit;
+        background-color: rgba(234,179,8,.1);
+      }
+      [data-theme="dark"] .callout.callout-error {
+        border: solid rgba(239,68,68,.5);
+        color: inherit;
+        background-color: rgba(239,68,68,.1);
+      }
+      [data-theme="dark"] .callout.callout-success {
+        border: solid rgba(34,197,94,.5);
+        color: inherit;
+        background-color: rgba(34,197,94,.1);
+      }
+      .code-block {
+        position: relative;
+      }
+      .code-block button {
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+        z-index: 10;
+        width: 1.25rem;
+        height: 1.25rem;
+        opacity: 0.0;
+        color: white;
+      }
+      .code-block:hover button {
+        opacity: 0.75;
+      }
+      figure.image {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+      .theme-toggle {
+        display: flex;
+        padding: 0.7rem;
+        border: unset;
+        border-radius: 8px;
+        outline: unset;
+        align-items: center;
+        background-color: transparent;
+      }
+      .theme-toggle:hover {
+        background-color: color-mix(in srgb, currentColor 5%, transparent);
+      }
+      figure.image.zoomable img {
+        cursor: zoom-in;
+      }
+      dialog.zoom-modal {
+        width: 100vw;
+        height: 100vh;
+        max-width: initial;
+        max-height: initial;
+        padding: 0;
+        margin: 0;
+        border: none;
+        outline-style: none;
+        overflow: hidden;
+        background-color: transparent;
+      }
+      dialog.zoom-modal .image-wrapper {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        background-color: var(--background);
+      }
+      dialog.zoom-modal img {
+        position: absolute;
+        cursor: zoom-out;
+        transition: transform 300ms;
+        transform-origin: top left;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="docs">
+      <div class="header-container" data-has-sidebar>
+        <header class="header">
+          <!--@jaspr_content:sidebar_toggle_button-->
+          <button class="sidebar-toggle-button">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" x2="20" y1="12" y2="12"></line><line x1="4" x2="20" y1="6" y2="6"></line><line x1="4" x2="20" y1="18" y2="18"></line></svg>
+            
+          </button>
+          <!--/@jaspr_content:sidebar_toggle_button-->
+          <a class="header-title" href="/"><img alt="Logo" src="/images/logo.svg"/><span>Zonai</span></a>
+          <div class="header-content">
+            <div class="header-items">
+              <!--@search-->
+              <button class="search-trigger" aria-label="Search the documentation" type="button">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                <span class="search-trigger-label">Search</span>
+                <span class="search-trigger-keys">⌘K</span>
+              </button>
+              <!--/@search-->
+              <a class="header-home-link" aria-label="Zonai home" href="https://zonai.dev">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V20a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1V9.5"/></svg>
+                <span class="header-home-label">zonai.dev</span>
+              </a>
+              <a class="header-icon-link" aria-label="Zonai on GitHub" target="_blank" rel="noreferrer" href="https://github.com/mrgnhnt96/zonai">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .5C5.37.5 0 5.87 0 12.5c0 5.3 3.44 9.8 8.2 11.39.6.11.82-.26.82-.58 l-.01-2.05c-3.34.73-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.09-.75.08-.73.08-.73 1.2.08 1.84 1.24 1.84 1.24 1.07 1.83 2.81 1.3 3.5.99.11-.78.42-1.3.76-1.6-2.67-.3-5.47-1.33-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.13-.3-.54-1.52.11-3.18 0 0 1.01-.32 3.3 1.23a11.5 11.5 0 0 1 6.005 0c2.28-1.55 3.29-1.23 3.29-1.23.66 1.66.25 2.88.12 3.18.77.84 1.24 1.91 1.24 3.22 0 4.61-2.81 5.62-5.49 5.92.43.37.81 1.1.81 2.22l-.01 3.29c0 .32.21.7.82.58A12 12 0 0 0 24 12.5C24 5.87 18.63.5 12 .5z"/></svg>
+              </a>
+              <!--@jaspr_content:theme_toggle-->
+              <button class="theme-toggle" style="visibility: hidden" aria-label="Theme Toggle">
+                <span><svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" width="20px" height="20px"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"></path></svg></span>
+                <span style="display: none"><svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" width="20px" height="20px"><circle cx="12" cy="12" r="4"></circle><path d="M12 4h.01"></path><path d="M20 12h.01"></path><path d="M12 20h.01"></path><path d="M4 12h.01"></path><path d="M17.657 6.343h.01"></path><path d="M17.657 17.657h.01"></path><path d="M6.343 17.657h.01"></path><path d="M6.343 6.343h.01"></path></svg></span>
+              </button>
+              <!--/@jaspr_content:theme_toggle-->
+            </div>
+          </div>
+        </header>
+      </div>
+      <div class="main-container">
+        <div class="sidebar-barrier" role="button"></div>
+        <div class="sidebar-container">
+          <nav class="docs-sidebar" aria-label="Documentation">
+            <button class="sidebar-close" aria-label="Close navigation">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+            </button>
+            <ul class="docs-sidebar-top"><li><a class="docs-sidebar-link" href="/"><span>Introduction</span></a></li></ul>
+            <details class="docs-sidebar-group">
+              <summary class="docs-sidebar-summary">
+                <span class="docs-sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></svg></span>
+                <span class="docs-sidebar-title">Start Here</span>
+                <span class="docs-sidebar-chevron"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></span>
+              </summary>
+              <ul>
+                <li><a class="docs-sidebar-link" href="/getting-started/installation"><span>Installation</span></a></li>
+                <li><a class="docs-sidebar-link" href="/getting-started/quick-start"><span>Quick Start</span></a></li>
+                <li>
+                  <a class="docs-sidebar-link" href="/getting-started/project-structure"><span>Project Structure</span></a>
+                </li>
+              </ul>
+            </details>
+            <details class="docs-sidebar-group">
+              <summary class="docs-sidebar-summary">
+                <span class="docs-sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg></span>
+                <span class="docs-sidebar-title">Core Concepts</span>
+                <span class="docs-sidebar-chevron"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></span>
+              </summary>
+              <ul>
+                <li>
+                  <a class="docs-sidebar-link" href="/core-concepts/request-pipeline"><span>How a Request is Processed</span></a>
+                </li>
+                <li><a class="docs-sidebar-link" href="/core-concepts/workers"><span>Workers</span></a></li>
+                <li><a class="docs-sidebar-link" href="/core-concepts/config-flavors"><span>Config Flavors</span></a></li>
+              </ul>
+            </details>
+            <details class="docs-sidebar-group">
+              <summary class="docs-sidebar-summary">
+                <span class="docs-sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" x2="4" y1="21" y2="14"/><line x1="4" x2="4" y1="10" y2="3"/><line x1="12" x2="12" y1="21" y2="12"/><line x1="12" x2="12" y1="8" y2="3"/><line x1="20" x2="20" y1="21" y2="16"/><line x1="20" x2="20" y1="12" y2="3"/><line x1="2" x2="6" y1="14" y2="14"/><line x1="10" x2="14" y1="8" y2="8"/><line x1="18" x2="22" y1="16" y2="16"/></svg></span>
+                <span class="docs-sidebar-title">Configuration</span>
+                <span class="docs-sidebar-chevron"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></span>
+              </summary>
+              <ul>
+                <li><a class="docs-sidebar-link" href="/configuration/zonai-yaml"><span>zonai.yaml Reference</span></a></li>
+                <li><a class="docs-sidebar-link" href="/configuration/app-config"><span>App Config</span></a></li>
+                <li>
+                  <a class="docs-sidebar-link" href="/configuration/environment-variables"><span>Environment Variables</span></a>
+                </li>
+              </ul>
+            </details>
+            <details class="docs-sidebar-group">
+              <summary class="docs-sidebar-summary">
+                <span class="docs-sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18"/><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M3 15h18"/></svg></span>
+                <span class="docs-sidebar-title">Data Modeling</span>
+                <span class="docs-sidebar-chevron"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></span>
+              </summary>
+              <ul>
+                <li><a class="docs-sidebar-link" href="/schemas/defining-tables"><span>Defining Tables</span></a></li>
+                <li><a class="docs-sidebar-link" href="/schemas/auth-tables"><span>Auth Tables</span></a></li>
+                <li><a class="docs-sidebar-link" href="/schemas/photo-tables"><span>Photo Tables</span></a></li>
+                <li>
+                  <a class="docs-sidebar-link" href="/database/migrations-overview"><span>Migrations Overview</span></a>
+                </li>
+                <li>
+                  <a class="docs-sidebar-link" href="/database/generating-migrations"><span>Generating Migrations</span></a>
+                </li>
+                <li>
+                  <a class="docs-sidebar-link" href="/database/applying-migrations"><span>Applying Migrations</span></a>
+                </li>
+              </ul>
+            </details>
+            <details class="docs-sidebar-group">
+              <summary class="docs-sidebar-summary">
+                <span class="docs-sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></svg></span>
+                <span class="docs-sidebar-title">Querying Data</span>
+                <span class="docs-sidebar-chevron"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></span>
+              </summary>
+              <ul>
+                <li><a class="docs-sidebar-link" href="/operations/overview"><span>Operations Overview</span></a></li>
+                <li>
+                  <a class="docs-sidebar-link" href="/operations/default-operations"><span>Default Operations</span></a>
+                </li>
+                <li><a class="docs-sidebar-link" href="/operations/views"><span>Views</span></a></li>
+                <li>
+                  <a class="docs-sidebar-link" href="/operations/streaming"><span>Live Queries</span><span class="docs-sidebar-badge">live</span></a>
+                </li>
+                <li><a class="docs-sidebar-link" href="/operations/auth-operations"><span>Auth Operations</span></a></li>
+                <li><a class="docs-sidebar-link" href="/api/openapi-spec"><span>OpenAPI Specification</span></a></li>
+              </ul>
+            </details>
+            <details class="docs-sidebar-group">
+              <summary class="docs-sidebar-summary">
+                <span class="docs-sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/><path d="M9 12h12"/></svg></span>
+                <span class="docs-sidebar-title">Dashboard</span>
+                <span class="docs-sidebar-chevron"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></span>
+              </summary>
+              <ul>
+                <li><a class="docs-sidebar-link" href="/dashboard/overview"><span>Overview</span></a></li>
+                <li><a class="docs-sidebar-link" href="/dashboard/metrics"><span>Metrics &amp; Cron Jobs</span></a></li>
+                <li>
+                  <a class="docs-sidebar-link" href="/dashboard/table-editor"><span>Browsing &amp; Editing Data</span></a>
+                </li>
+                <li><a class="docs-sidebar-link" href="/dashboard/branding"><span>Branding</span></a></li>
+              </ul>
+            </details>
+            <details class="docs-sidebar-group">
+              <summary class="docs-sidebar-summary">
+                <span class="docs-sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg></span>
+                <span class="docs-sidebar-title">Rules &amp; Authorization</span>
+                <span class="docs-sidebar-chevron"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></span>
+              </summary>
+              <ul>
+                <li><a class="docs-sidebar-link" href="/rules/overview"><span>Rules Overview</span></a></li>
+                <li><a class="docs-sidebar-link" href="/rules/table-rules"><span>Table Rules</span></a></li>
+                <li><a class="docs-sidebar-link" href="/rules/row-rules"><span>Row Rules</span></a></li>
+                <li><a class="docs-sidebar-link" href="/rules/auth-rules"><span>Auth Rules</span></a></li>
+                <li><a class="docs-sidebar-link" href="/rules/photo-rules"><span>Photo Rules</span></a></li>
+                <li><a class="docs-sidebar-link" href="/rules/jwt-claims"><span>JWT Claims</span></a></li>
+              </ul>
+            </details>
+            <details class="docs-sidebar-group">
+              <summary class="docs-sidebar-summary">
+                <span class="docs-sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15.5 7.5 2.3 2.3a1 1 0 0 0 1.4 0l2.1-2.1a1 1 0 0 0 0-1.4L19 4"/><path d="m21 2-9.6 9.6"/><circle cx="7.5" cy="15.5" r="5.5"/></svg></span>
+                <span class="docs-sidebar-title">Authentication</span>
+                <span class="docs-sidebar-chevron"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></span>
+              </summary>
+              <ul>
+                <li><a class="docs-sidebar-link" href="/authentication/overview"><span>Overview</span></a></li>
+                <li><a class="docs-sidebar-link" href="/authentication/password-auth"><span>Password Auth</span></a></li>
+                <li><a class="docs-sidebar-link" href="/authentication/otp-auth"><span>OTP Auth</span></a></li>
+                <li><a class="docs-sidebar-link" href="/authentication/magic-link-auth"><span>Magic Link Auth</span></a></li>
+                <li><a class="docs-sidebar-link" href="/authentication/oauth"><span>OAuth</span></a></li>
+                <li>
+                  <a class="docs-sidebar-link" href="/authentication/external-idp"><span>External Identity Providers</span></a>
+                </li>
+                <li>
+                  <a class="docs-sidebar-link" href="/authentication/external-idp-supabase"><span>Supabase Auth as an IdP</span></a>
+                </li>
+                <li>
+                  <a class="docs-sidebar-link" href="/authentication/session-management"><span>Session Management</span></a>
+                </li>
+                <li><a class="docs-sidebar-link" href="/authentication/admin-accounts"><span>Admin Accounts</span></a></li>
+                <li><a class="docs-sidebar-link" href="/authentication/api-tokens"><span>API Tokens</span></a></li>
+              </ul>
+            </details>
+            <details class="docs-sidebar-group">
+              <summary class="docs-sidebar-summary">
+                <span class="docs-sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22v-5"/><path d="M9 8V2"/><path d="M15 8V2"/><path d="M18 8v5a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V8Z"/></svg></span>
+                <span class="docs-sidebar-title">Extensions &amp; Hooks</span>
+                <span class="docs-sidebar-chevron"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></span>
+              </summary>
+              <ul>
+                <li><a class="docs-sidebar-link" href="/extensions/overview"><span>Overview</span></a></li>
+                <li><a class="docs-sidebar-link" href="/extensions/create-hooks"><span>Create Hooks</span></a></li>
+                <li><a class="docs-sidebar-link" href="/extensions/update-hooks"><span>Update Hooks</span></a></li>
+                <li><a class="docs-sidebar-link" href="/extensions/delete-hooks"><span>Delete Hooks</span></a></li>
+                <li><a class="docs-sidebar-link" href="/extensions/auth-hooks"><span>Auth Hooks</span></a></li>
+                <li><a class="docs-sidebar-link" href="/extensions/side-effects-get"><span>Side Effects: get</span></a></li>
+                <li>
+                  <a class="docs-sidebar-link" href="/extensions/side-effects-mutate"><span>Side Effects: mutate</span></a>
+                </li>
+                <li>
+                  <a class="docs-sidebar-link" href="/extensions/side-effects-email"><span>Side Effects: email</span></a>
+                </li>
+                <li>
+                  <a class="docs-sidebar-link" href="/extensions/side-effects-push"><span>Side Effects: push</span></a>
+                </li>
+              </ul>
+            </details>
+            <details class="docs-sidebar-group">
+              <summary class="docs-sidebar-summary">
+                <span class="docs-sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span>
+                <span class="docs-sidebar-title">Background Jobs</span>
+                <span class="docs-sidebar-chevron"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></span>
+              </summary>
+              <ul>
+                <li><a class="docs-sidebar-link" href="/cron-jobs/overview"><span>Overview</span></a></li>
+                <li><a class="docs-sidebar-link" href="/cron-jobs/defining-a-job"><span>Defining a Job</span></a></li>
+                <li><a class="docs-sidebar-link" href="/cron-jobs/catch-up-logic"><span>Catch-Up Logic</span></a></li>
+                <li><a class="docs-sidebar-link" href="/cron-jobs/side-effects"><span>Side Effects</span></a></li>
+                <li><a class="docs-sidebar-link" href="/cron-jobs/running-manually"><span>Running Manually</span></a></li>
+              </ul>
+            </details>
+            <details class="docs-sidebar-group">
+              <summary class="docs-sidebar-summary">
+                <span class="docs-sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg></span>
+                <span class="docs-sidebar-title">Email</span>
+                <span class="docs-sidebar-chevron"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></span>
+              </summary>
+              <ul>
+                <li><a class="docs-sidebar-link" href="/email/smtp-setup"><span>SMTP Setup</span></a></li>
+                <li><a class="docs-sidebar-link" href="/email/built-in-templates"><span>Built-in Templates</span></a></li>
+                <li><a class="docs-sidebar-link" href="/email/custom-templates"><span>Custom Templates</span></a></li>
+                <li><a class="docs-sidebar-link" href="/email/testing-locally"><span>Testing Locally</span></a></li>
+              </ul>
+            </details>
+            <details class="docs-sidebar-group">
+              <summary class="docs-sidebar-summary">
+                <span class="docs-sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/></svg></span>
+                <span class="docs-sidebar-title">Push Notifications</span>
+                <span class="docs-sidebar-chevron"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></span>
+              </summary>
+              <ul>
+                <li><a class="docs-sidebar-link" href="/push/overview"><span>Overview</span></a></li>
+                <li><a class="docs-sidebar-link" href="/push/device-tokens"><span>Device Tokens</span></a></li>
+                <li><a class="docs-sidebar-link" href="/push/configuration"><span>Configuration</span></a></li>
+                <li><a class="docs-sidebar-link" href="/push/sending"><span>Sending</span></a></li>
+                <li><a class="docs-sidebar-link" href="/push/dead-tokens"><span>Dead Tokens</span></a></li>
+                <li><a class="docs-sidebar-link" href="/push/delivery-guarantees"><span>Delivery Guarantees</span></a></li>
+                <li><a class="docs-sidebar-link" href="/push/testing-locally"><span>Testing Locally</span></a></li>
+              </ul>
+            </details>
+            <details class="docs-sidebar-group">
+              <summary class="docs-sidebar-summary">
+                <span class="docs-sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 14 4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/></svg></span>
+                <span class="docs-sidebar-title">Rate Limiting</span>
+                <span class="docs-sidebar-chevron"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></span>
+              </summary>
+              <ul>
+                <li><a class="docs-sidebar-link" href="/rate-limiting/overview"><span>Overview</span></a></li>
+                <li>
+                  <a class="docs-sidebar-link" href="/rate-limiting/configuring-policies"><span>Configuring Policies</span></a>
+                </li>
+                <li>
+                  <a class="docs-sidebar-link" href="/rate-limiting/auth-rate-limits"><span>Auth Rate Limits</span></a>
+                </li>
+                <li><a class="docs-sidebar-link" href="/rate-limiting/trusted-proxies"><span>Trusted Proxies</span></a></li>
+              </ul>
+            </details>
+            <details class="docs-sidebar-group">
+              <summary class="docs-sidebar-summary">
+                <span class="docs-sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 18 3.5 8.5 12 2l8.5 6.5L18 18Z"/><path d="M6 18h12"/><path d="m12 2 6 16"/></svg></span>
+                <span class="docs-sidebar-title">Dart Client</span>
+                <span class="docs-sidebar-chevron"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></span>
+              </summary>
+              <ul>
+                <li><a class="docs-sidebar-link" href="/dart-client/overview"><span>Overview</span></a></li>
+                <li><a class="docs-sidebar-link" href="/dart-client/typed-client"><span>Typed Client</span></a></li>
+                <li><a class="docs-sidebar-link" href="/dart-client/authentication"><span>Authentication</span></a></li>
+                <li><a class="docs-sidebar-link" href="/dart-client/database"><span>Database</span></a></li>
+                <li><a class="docs-sidebar-link" href="/dart-client/photos"><span>Photos</span></a></li>
+                <li><a class="docs-sidebar-link" href="/dart-client/email"><span>Email</span></a></li>
+                <li><a class="docs-sidebar-link" href="/dart-client/storage"><span>Storage</span></a></li>
+              </ul>
+            </details>
+            <details class="docs-sidebar-group">
+              <summary class="docs-sidebar-summary">
+                <span class="docs-sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" x2="20" y1="19" y2="19"/></svg></span>
+                <span class="docs-sidebar-title">CLI Reference</span>
+                <span class="docs-sidebar-chevron"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></span>
+              </summary>
+              <ul>
+                <li><a class="docs-sidebar-link" href="/cli/dev"><span>zonai dev</span></a></li>
+                <li><a class="docs-sidebar-link" href="/cli/serve"><span>zonai serve</span></a></li>
+                <li><a class="docs-sidebar-link" href="/cli/build"><span>zonai build</span></a></li>
+                <li><a class="docs-sidebar-link" href="/cli/compile"><span>zonai compile</span></a></li>
+                <li><a class="docs-sidebar-link" href="/cli/db"><span>zonai db</span></a></li>
+                <li><a class="docs-sidebar-link" href="/cli/gen"><span>zonai gen</span></a></li>
+                <li><a class="docs-sidebar-link" href="/cli/rules"><span>zonai rules</span></a></li>
+                <li><a class="docs-sidebar-link" href="/cli/ping"><span>zonai ping</span></a></li>
+                <li><a class="docs-sidebar-link" href="/cli/ai"><span>zonai ai</span></a></li>
+                <li><a class="docs-sidebar-link" href="/cli/version"><span>zonai version</span></a></li>
+                <li><a class="docs-sidebar-link" href="/cli/upgrading"><span>Upgrading Zonai</span></a></li>
+                <li><a class="docs-sidebar-link" href="/cli/global-flags"><span>Global Flags</span></a></li>
+              </ul>
+            </details>
+            <details class="docs-sidebar-group" open>
+              <summary class="docs-sidebar-summary">
+                <span class="docs-sidebar-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="8" x="2" y="2" rx="2"/><rect width="20" height="8" x="2" y="14" rx="2"/><line x1="6" x2="6.01" y1="6" y2="6"/><line x1="6" x2="6.01" y1="18" y2="18"/></svg></span>
+                <span class="docs-sidebar-title">Deployment</span>
+                <span class="docs-sidebar-chevron"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></span>
+              </summary>
+              <ul>
+                <li>
+                  <a class="docs-sidebar-link" href="/deployment/building-for-production"><span>Building for Production</span></a>
+                </li>
+                <li>
+                  <a class="docs-sidebar-link" href="/deployment/running-the-server"><span>Running the Server</span></a>
+                </li>
+                <li><a class="docs-sidebar-link" href="/deployment/server-binding"><span>Server Binding</span></a></li>
+                <li>
+                  <a class="docs-sidebar-link" href="/deployment/environment-and-secrets"><span>Environment &amp; Secrets</span></a>
+                </li>
+                <li><a class="docs-sidebar-link" href="/deployment/cross-compilation"><span>Cross-Compilation</span></a></li>
+                <li>
+                  <a class="docs-sidebar-link active" aria-current="page" href="/deployment/fly-io"><span>Deploying to Fly.io</span></a>
+                </li>
+              </ul>
+            </details>
+          </nav>
+        </div>
+        <main>
+          <div>
+            <div class="content-container">
+              <div class="content-header">
+                <nav class="breadcrumbs" aria-label="Breadcrumb"><a href="/">Docs</a><span class="breadcrumb-sep">/</span><span>Deployment</span></nav>
+                <h1>Deploying to Fly.io</h1>
+                <p>A worked Fly.io deployment — cross-compiled bundle, persistent volume, and first-boot bootstrap.</p>
+              </div>
+              <section class="content">
+                <p>
+                  This is the deployment we actually run, in the order we run it: cross-compile the bundle on your dev
+                  machine, package it into a minimal image, bootstrap the database on the app machine, and confirm it's
+                  serving. Written so you can follow it for a different app.
+                </p>
+                <p>
+                  It assumes you already know what <code>zonai build</code> produces and what <code>--release</code> means — see
+                  <a href="/deployment/building-for-production">Building for Production</a>, <a href="/deployment/cross-compilation">Cross-Compilation</a>,
+                  and <a href="/deployment/running-the-server">Running the Server</a> first.
+                </p>
+                <p>Written against zonai 0.6.2. Project-linked builds (in-process ops/rules) landed in 0.6.1.</p>
+                <div class="callout callout-warning">
+                  <span><svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" width="20px" height="20px"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"></path><path d="M12 9v4"></path><path d="M12 17h.01"></path></svg></span>
+                  <span><p><strong>No released version cross-compiles the <code>.aot</code> snapshots correctly yet.</strong> Through v0.6.2 inclusive,
+<code>zonai build</code> passes <code>buildSettings</code> to the <code>.exe</code> compile and not to the aot-snapshot one, so a
+cross-compiled bundle ships two host-arch <code>.aot</code> files inside an otherwise correct <code>linux/x64</code> image.
+It is fixed on <code>main</code> but not in any tag, and <code>lib/gen/version.dart</code> still reads <code>0.6.2</code> there — so
+<code>zonai version</code> prints the same string either way and <strong>cannot</strong> tell you which one you have. Until
+the next release, assume you have the bug and keep the arch check in
+<a href="#3-build-the-deploy-bundle">step 3</a>; it catches this exact case.</p></span>
+                </div>
+                <h2 id="do-you-even-need-docker" anchor="true"><span>Do You Even Need Docker?</span><a href="/deployment/fly-io#do-you-even-need-docker">#</a></h2>
+                <p>
+                  You need a Dockerfile — Fly builds an image — but you do <strong>not</strong> need Docker installed locally, and
+                  nothing gets compiled inside the image. <code>zonai build</code> cross-compiles a Linux bundle directly on your
+                  Mac, and the Dockerfile just copies it in. Fly's remote builder assembles the image.
+                </p>
+                <p>
+                  The one case that needs a real Linux container is rebuilding the <strong>zonai CLI itself</strong> from source —
+                  see <a href="#appendix-rebuilding-the-framework-from-source">Rebuilding the framework from source</a>
+                   at the
+                  bottom. If your installed <code>zonai</code> already builds and serves your app, skip it.
+                </p>
+                <h2 id="what-you-end-up-with" anchor="true"><span>What You End Up With</span><a href="/deployment/fly-io#what-you-end-up-with">#</a></h2>
+                <p>
+                  One Fly machine, with a persistent volume for the SQLite database. If your app has a second,
+                  public-facing Dart process (a proxy, a webhook receiver, a Jaspr front end), it looks like this:
+                </p>
+                <div class="code-block">
+                  <!--@jaspr_content:code_block_copy_button-->
+                  <button>
+                    <svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" width="18px" height="18px">
+                      <rect rx="2" ry="2" x="8" y="8" width="14" height="14"></rect>
+                      <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path>
+                    </svg>
+                  </button>
+                  <!--/@jaspr_content:code_block_copy_button-->
+                  <pre><code><span style="color: #b9eeff">                    ┌─────────────────────────────────────────┐
+  internet  ──<span style="color: #b5cea8">443</span>──▶│ public process        <span style="color: #d4d4d4">:</span><span style="color: #b5cea8">8080</span>             │
+                    │   proxy <span style="color: #d4d4d4">+</span> webhooks                      │
+                    │        │                                │
+                    │        └─▶ zonai serve  <span style="color: #b5cea8">127.0</span><span style="color: #d4d4d4">.</span><span style="color: #b5cea8">0.1</span><span style="color: #d4d4d4">:</span><span style="color: #b5cea8">8081</span>  │
+                    │                  │                      │
+                    │                  ▼                      │
+                    │        <span style="color: #d4d4d4">/</span>app<span style="color: #d4d4d4">/</span><span style="color: #d4d4d4">.</span>zonai<span style="color: #d4d4d4">/</span>data ◀── <span style="color: #4ec9b0">Fly</span> volume  │
+                    └─────────────────────────────────────────┘
+</span></code></pre>
+                </div>
+                <p>
+                  If zonai is the only process, it's simpler: bind <code>zonai serve</code> to <code>0.0.0.0</code> on the port 
+                  <code>fly.toml</code>
+                  exposes, and skip the second binary and the sequencing in <a href="#7-start-script">step 7</a>. Each step notes
+                  where that applies.
+                </p>
+                <p>Two properties to be aware of before you start:</p>
+                <ul>
+                  <li>
+                    <strong>One machine, not more.</strong> Zonai stores everything in a SQLite file. Multiple <code>zonai serve</code>
+                    
+                    instances sharing one database file isn't supported, so this is a single-node deployment by
+                    construction.
+                  </li>
+                  <li>
+                    <strong>You need a volume.</strong> Without one, every deploy and every restart starts from an empty database.
+                  </li>
+                </ul>
+                <h2 id="prerequisites" anchor="true"><span>Prerequisites</span><a href="/deployment/fly-io#prerequisites">#</a></h2>
+                <table>
+                  <thead><tr><th>Requirement</th><th>Notes</th></tr></thead>
+                  <tbody>
+                    <tr>
+                      <td><code>zonai</code> binary</td>
+                      <td>in your app directory (e.g. <code>apps/server/zonai</code>)</td>
+                    </tr>
+                    <tr><td>Dart SDK</td><td>on the build machine</td></tr>
+                    <tr><td><code>flyctl</code></td><td>installed and authenticated (<code>fly auth login</code>)</td></tr>
+                    <tr><td>Docker</td><td><strong>not needed locally</strong> — Fly's remote builder handles it</td></tr>
+                  </tbody>
+                </table>
+                <p>
+                  You do not need a container or an emulator to produce Linux binaries. Zonai cross-compiles directly,
+                  so an Apple Silicon Mac can build a <code>linux/x64</code> bundle natively.
+                </p>
+                <h2 id="1-tell-zonai-what-to-build-for" anchor="true">
+                  <span>1. Tell Zonai What to Build For</span><a href="/deployment/fly-io#1-tell-zonai-what-to-build-for">#</a>
+                </h2>
+                <p>In <code>zonai.yaml</code>, next to your existing paths:</p>
+                <div class="code-block">
+                  <!--@jaspr_content:code_block_copy_button-->
+                  <button>
+                    <svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" width="18px" height="18px">
+                      <rect rx="2" ry="2" x="8" y="8" width="14" height="14"></rect>
+                      <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path>
+                    </svg>
+                  </button>
+                  <!--/@jaspr_content:code_block_copy_button-->
+                  <pre><code><span style="color: #b9eeff">version: 0.6.2
+
+migrationsPath: .zonai/migrations
+schemasPath: lib/src/schemas
+rulesPath: lib/src/rules
+operationsPath: lib/src/operations
+extensionsPath: lib/src/extensions
+configPath: lib/src/config
+
+# Fly machines run linux/x64.
+buildSettings:
+  targetOs: linux
+  targetArch: x64
+</span></code></pre>
+                </div>
+                <p>
+                  <code>buildSettings</code> is what turns <code>zonai build</code> into a cross-compile — see
+                  <a href="/deployment/cross-compilation">Cross-Compilation</a>. Keep <code>version</code>
+                   matching the binary you're
+                  actually running.
+                </p>
+                <h2 id="2-put-compile-time-config-in-env" anchor="true">
+                  <span>2. Put Compile-Time Config in <code>.env</code></span><a href="/deployment/fly-io#2-put-compile-time-config-in-env">#</a>
+                </h2>
+                <p>
+                  Zonai reads a <code>.env</code> from your <strong>app root</strong> — the same directory as <code>zonai.yaml</code>
+                   — and bakes every
+                  key into the compiled workers as a <code>-D</code> define. Your config reads them back with
+                  <code>String.fromEnvironment</code>:
+                </p>
+                <div class="code-block">
+                  <!--@jaspr_content:code_block_copy_button-->
+                  <button>
+                    <svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" width="18px" height="18px">
+                      <rect rx="2" ry="2" x="8" y="8" width="14" height="14"></rect>
+                      <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path>
+                    </svg>
+                  </button>
+                  <!--/@jaspr_content:code_block_copy_button-->
+                  <pre><code><span style="color: #b9eeff"><span style="color: #608b4e">// lib/src/config/db_config.dart</span>
+<span style="color: #4ec9b0">AppConfig</span> <span style="color: #dcdcaa">main</span><span><span style="color: #5caeef">(</span><span style="color: #5caeef">)</span> </span><span style="color: #d4d4d4">=&gt;</span> <span style="color: #4ec9b0">AppConfig</span><span><span style="color: #5caeef">(</span>
+  appName</span><span style="color: #d4d4d4">:</span> <span style="color: #ce9178">'MyApp'</span><span style="color: #d4d4d4">,</span>
+  passwordSecret<span style="color: #d4d4d4">:</span> <span style="color: #569cd6">const</span> <span style="color: #4ec9b0">String</span><span style="color: #d4d4d4">.</span><span style="color: #dcdcaa">fromEnvironment</span><span style="color: #dfb976">(</span><span style="color: #ce9178">'PASSWORD_SECRET'</span><span style="color: #d4d4d4">,</span> defaultValue<span style="color: #d4d4d4">:</span> <span style="color: #ce9178">'dev-password-secret'</span><span style="color: #dfb976">)</span><span style="color: #d4d4d4">,</span>
+  jwtSecret<span style="color: #d4d4d4">:</span> <span style="color: #569cd6">const</span> <span style="color: #4ec9b0">String</span><span style="color: #d4d4d4">.</span><span style="color: #dcdcaa">fromEnvironment</span><span style="color: #dfb976">(</span><span style="color: #ce9178">'JWT_SECRET'</span><span style="color: #d4d4d4">,</span> defaultValue<span style="color: #d4d4d4">:</span> <span style="color: #ce9178">'dev-jwt-secret'</span><span style="color: #dfb976">)</span><span style="color: #d4d4d4">,</span>
+  baseUrl<span style="color: #d4d4d4">:</span> <span style="color: #569cd6">const</span> <span style="color: #4ec9b0">String</span><span style="color: #d4d4d4">.</span><span style="color: #dcdcaa">fromEnvironment</span><span style="color: #dfb976">(</span><span style="color: #ce9178">'BASE_URL'</span><span style="color: #d4d4d4">,</span> defaultValue<span style="color: #d4d4d4">:</span> <span style="color: #ce9178">'http://localhost:8080'</span><span style="color: #dfb976">)</span><span style="color: #d4d4d4">,</span><span>
+<span style="color: #5caeef">)</span></span><span style="color: #d4d4d4">;</span>
+</span></code></pre>
+                </div>
+                <div class="code-block">
+                  <!--@jaspr_content:code_block_copy_button-->
+                  <button>
+                    <svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" width="18px" height="18px">
+                      <rect rx="2" ry="2" x="8" y="8" width="14" height="14"></rect>
+                      <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path>
+                    </svg>
+                  </button>
+                  <!--/@jaspr_content:code_block_copy_button-->
+                  <pre><code><span style="color: #b9eeff"># apps/server/.env   — gitignored, never committed
+JWT_SECRET=...
+PASSWORD_SECRET=...
+BASE_URL=https://your-app.fly.dev
+</span></code></pre>
+                </div>
+                <p>Three things worth knowing:</p>
+                <ul>
+                  <li>
+                    <strong>No <code>--flavor</code> means plain <code>.env</code>.</strong> With <code>--flavor prod</code>, zonai reads 
+                    <code>.env.prod</code> <strong>only</strong> — it
+                    does not fall back to <code>.env</code>. If <code>.env.prod</code> is missing you get a warning
+                    (<code>No flavor-specific .env file found for flavor: prod</code>) and <strong>no defines at all</strong>, so every
+                    <code>String.fromEnvironment</code> silently takes its <code>defaultValue</code>.
+                  </li>
+                  <li>
+                    <strong>Defaults are silent.</strong> A missing key is never an error. Verify after building — see
+                    <a href="#3-build-the-deploy-bundle">step 3</a>.
+                  </li>
+                  <li>
+                    <strong>The compiled artifacts contain your secrets.</strong> They're baked in, not read at runtime. Treat
+                    <code>build/</code> as sensitive and don't publish the image anywhere public. See
+                    <a href="/deployment/environment-and-secrets">Environment &amp; Secrets</a>.
+                  </li>
+                </ul>
+                <p>
+                  You can also pass keys on the command line instead of (or in addition to) <code>.env</code>, with
+                  <code>--dart-define KEY=VALUE</code>. Note the space — <code>--dart-define=KEY=VALUE</code>
+                   fails to parse, because
+                  argument splitting happens on every <code>=</code>. CLI defines win over matching 
+                  <code>.env</code> keys.
+                </p>
+                <p>
+                  There is no <code>--dart-define-from-file</code>: the env file is found by name, never passed as a flag, and
+                  an unrecognized flag is ignored without a warning — so a build that names one succeeds with no
+                  defines at all. See
+                  <a href="/configuration/environment-variables#there-is-no---dart-define-from-file">Environment Variables</a>.
+                </p>
+                <h3 id="compile-time-vs-runtime-config" anchor="true">
+                  <span>Compile-Time vs Runtime Config</span><a href="/deployment/fly-io#compile-time-vs-runtime-config">#</a>
+                </h3>
+                <p>Two different mechanisms, easy to conflate:</p>
+                <table>
+                  <thead><tr><th>Kind</th><th>Where it's set</th><th>Where it's read</th><th>Example</th></tr></thead>
+                  <tbody>
+                    <tr>
+                      <td><strong>Compile-time</strong></td>
+                      <td><code>.env</code> at build</td>
+                      <td><code>String.fromEnvironment</code></td>
+                      <td><code>JWT_SECRET</code></td>
+                    </tr>
+                    <tr>
+                      <td><strong>Runtime</strong></td>
+                      <td><code>fly secrets set</code></td>
+                      <td><code>Platform.environment</code></td>
+                      <td>webhook secrets</td>
+                    </tr>
+                  </tbody>
+                </table>
+                <p>
+                  Anything your <em>own</em> Dart process reads at startup belongs in Fly secrets (<a href="#9-create-the-app-volume-and-secrets">step 9</a>).
+                  Anything zonai's config worker needs belongs in <code>.env</code> at build time.
+                </p>
+                <h2 id="3-build-the-deploy-bundle" anchor="true"><span>3. Build the Deploy Bundle</span><a href="/deployment/fly-io#3-build-the-deploy-bundle">#</a></h2>
+                <p>One script produces everything the image needs. Nothing is compiled inside Docker.</p>
+                <div class="code-block">
+                  <!--@jaspr_content:code_block_copy_button-->
+                  <button>
+                    <svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" width="18px" height="18px">
+                      <rect rx="2" ry="2" x="8" y="8" width="14" height="14"></rect>
+                      <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path>
+                    </svg>
+                  </button>
+                  <!--/@jaspr_content:code_block_copy_button-->
+                  <pre><code><span style="color: #b9eeff"><span>#!/usr/bin/env bash
+set -euo pipefail
+cd "$<span style="color: #5caeef">(</span>dirname "$<span style="color: #dfb976">{</span>BASH_SOURCE<span style="color: #c172d9">[</span>0<span style="color: #c172d9">]</span><span style="color: #dfb976">}</span>"<span style="color: #5caeef">)</span>/.."
+
+echo "==&gt; Building apps/server <span style="color: #5caeef">(</span>zonai build --release<span style="color: #5caeef">)</span>"
+<span style="color: #5caeef">(</span>cd apps/server &amp;&amp; ./zonai build --release<span style="color: #5caeef">)</span>
+
+# Only if you have a second, public-facing process:
+mkdir -p apps/gateway/build
+<span style="color: #5caeef">(</span>cd apps/gateway &amp;&amp; dart pub get &amp;&amp; dart compile exe \
+  --target-os linux --target-arch x64 \
+  bin/gateway.dart -o build/gateway<span style="color: #5caeef">)</span>
+
+# Nothing host-arch may reach the image. A wrong-arch artifact builds and
+# deploys without complaint and only fails at runtime, so check here.
+bad=0
+while IFS= read -r artifact; do
+  desc="$<span style="color: #5caeef">(</span>file -b "$artifact"<span style="color: #5caeef">)</span>"
+  case "$desc" in
+    *ELF*|*Mach-O*|*PE32*<span style="color: #ff0000">)</span>
+      if <span style="color: #ff0000">[</span><span style="color: #5caeef">[</span> "$desc" != *x86-64* <span style="color: #5caeef">]</span><span style="color: #ff0000">]</span>; then
+        echo "ERROR: $artifact is not x86-64: $desc" &gt;&amp;2
+        bad=1
+      fi
+      ;;
+  esac
+done &lt; &lt;<span style="color: #ff0000">(</span>find apps/server/build apps/gateway/build -type f<span style="color: #ff0000">)</span>
+<span style="color: #ff0000">[</span><span style="color: #5caeef">[</span> "$bad" -eq 0 <span style="color: #5caeef">]</span><span style="color: #ff0000">]</span> || <span style="color: #ff0000">{</span> echo "Bundle has non-linux/x64 binaries." &gt;&amp;2; exit 1; <span style="color: #ff0000">}</span>
+</span></span></code></pre>
+                </div>
+                <p>
+                  You should get <code>apps/server/build/</code> containing <code>zonai</code>, <code>.zonai/executables/</code>, 
+                  <code>.zonai/lib/</code>,
+                  <code>.zonai/migrations/</code>, plus your second binary if you have one.
+                </p>
+                <p><strong>Verify before deploying.</strong> Two checks worth running the first time:</p>
+                <div class="code-block">
+                  <!--@jaspr_content:code_block_copy_button-->
+                  <button>
+                    <svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" width="18px" height="18px">
+                      <rect rx="2" ry="2" x="8" y="8" width="14" height="14"></rect>
+                      <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path>
+                    </svg>
+                  </button>
+                  <!--/@jaspr_content:code_block_copy_button-->
+                  <pre><code><span style="color: #b9eeff"><span># Everything linux/x64?
+find apps/server/build -type f -exec file <span style="color: #5caeef">{</span><span style="color: #5caeef">}</span> \; | grep -v "x86-64" | grep -iE "ELF|Mach-O"
+# <span style="color: #5caeef">(</span>no output = good<span style="color: #5caeef">)</span>
+
+# Did your .env actually get baked in?
+strings apps/server/build/.zonai/executables/db_config.exe | grep -c 'dev-jwt-secret'
+# 0 = your real secret was used; 1 = it fell back to the default
+</span></span></code></pre>
+                </div>
+                <p>
+                  Every object file in the bundle should be <code>x86-64</code>, including the two <code>.aot</code> snapshots in
+                  <code>.zonai/executables/</code>. <strong>On every released version through v0.6.2 they come out for the build host</strong>
+                  
+                  — <code>zonai build</code> passes <code>buildSettings</code> to the <code>.exe</code>
+                   compile and not to the aot-snapshot one — and a
+                  bundle carrying them deploys and serves without complaint, so keep this check in your script rather
+                  than trusting the build.
+                </p>
+                <p>
+                  If your bundle has host-arch <code>.aot</code> files, recompile them from the generated sources with the target
+                  flags and the same <code>-D</code> defines, after <code>zonai build</code>:
+                </p>
+                <div class="code-block">
+                  <!--@jaspr_content:code_block_copy_button-->
+                  <button>
+                    <svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" width="18px" height="18px">
+                      <rect rx="2" ry="2" x="8" y="8" width="14" height="14"></rect>
+                      <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path>
+                    </svg>
+                  </button>
+                  <!--/@jaspr_content:code_block_copy_button-->
+                  <pre><code><span style="color: #b9eeff"><span>for worker in rules operations; do
+  dart compile aot-snapshot --target-os linux --target-arch x64 \
+    "apps/server/.dart_tool/zonai/db_$<span style="color: #5caeef">{</span>worker<span style="color: #5caeef">}</span>.dart" \
+    -o "apps/server/build/.zonai/executables/db_$<span style="color: #5caeef">{</span>worker<span style="color: #5caeef">}</span>.aot"
+done
+</span></span></code></pre>
+                </div>
+                <p>
+                  The <code>-D</code> defines matter: these snapshots are a second compile of the same sources as the <code>.exe</code>, so
+                  they need the same <code>.env</code>-derived defines or the in-process path reads different config than the
+                  worker path. The arch check above then passes for the right reason.
+                </p>
+                <h2 id="4-dockerfile" anchor="true"><span>4. Dockerfile</span><a href="/deployment/fly-io#4-dockerfile">#</a></h2>
+                <p>The image compiles nothing. It installs the runtime libraries and copies the prebuilt bundle in.</p>
+                <div class="code-block">
+                  <!--@jaspr_content:code_block_copy_button-->
+                  <button>
+                    <svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" width="18px" height="18px">
+                      <rect rx="2" ry="2" x="8" y="8" width="14" height="14"></rect>
+                      <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path>
+                    </svg>
+                  </button>
+                  <!--/@jaspr_content:code_block_copy_button-->
+                  <pre><code><span style="color: #b9eeff"><span>FROM debian:bookworm-slim
+
+# libsqlite3-0 because the compiled workers link against libsqlite3.
+# Debian ships only the versioned libsqlite3.so.0, not the unversioned
+# libsqlite3.so that FFI loaders look for — hence the symlink. That symlink
+# otherwise only comes from the much heavier -dev package.
+RUN apt-get update &amp;&amp; apt-get install -y --no-install-recommends \
+      ca-certificates curl libsqlite3-0 \
+    &amp;&amp; rm -rf /var/lib/apt/lists/* \
+    &amp;&amp; ln -sf /usr/lib/x86_64-linux-gnu/libsqlite3.so.0 \
+              /usr/lib/x86_64-linux-gnu/libsqlite3.so
+
+WORKDIR /app
+
+COPY apps/server/build/ .
+COPY apps/gateway/build/gateway ./gateway
+COPY apps/server/scripts/ ./scripts/
+
+RUN chmod +x ./zonai ./gateway ./scripts/start.sh ./scripts/ensure_admin.sh
+
+EXPOSE 8080
+
+CMD <span style="color: #5caeef">[</span>"./scripts/start.sh"<span style="color: #5caeef">]</span>
+</span></span></code></pre>
+                </div>
+                <p>
+                  <code>curl</code> is there because <code>start.sh</code> uses it to wait for zonai's health endpoint. Drop it if you don't.
+                </p>
+                <p>
+                  If zonai is your only process, you don't need the scripts at all — <code>CMD ["./zonai", "serve", "--release", "--host", "0.0.0.0"]</code>
+                  
+                  plus a <code>release</code>-safe bootstrap is enough (but read <a href="#6-bootstrap-script">step 6</a>
+                   before reaching for
+                  <code>release_command</code>).
+                </p>
+                <h2 id="5-dockerignore" anchor="true"><span>5. <code>.dockerignore</code></span><a href="/deployment/fly-io#5-dockerignore">#</a></h2>
+                <p>
+                  The build context only needs the build outputs and the scripts. Without this, Fly spends minutes
+                  tarring and uploading your entire repo — including every <code>.git</code>.
+                </p>
+                <div class="code-block">
+                  <!--@jaspr_content:code_block_copy_button-->
+                  <button>
+                    <svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" width="18px" height="18px">
+                      <rect rx="2" ry="2" x="8" y="8" width="14" height="14"></rect>
+                      <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path>
+                    </svg>
+                  </button>
+                  <!--/@jaspr_content:code_block_copy_button-->
+                  <pre><code><span style="color: #b9eeff"><span style="color: #d4d4d4">*</span>
+<span style="color: #d4d4d4">!</span><span style="color: #4ec9b0">Dockerfile</span>
+<span style="color: #d4d4d4">!</span>apps<span style="color: #d4d4d4">/</span>
+<span style="color: #d4d4d4">!</span>apps<span style="color: #d4d4d4">/</span>server<span style="color: #d4d4d4">/</span>
+<span style="color: #d4d4d4">!</span>apps<span style="color: #d4d4d4">/</span>server<span style="color: #d4d4d4">/</span>build<span style="color: #d4d4d4">/</span>
+<span style="color: #d4d4d4">!</span>apps<span style="color: #d4d4d4">/</span>server<span style="color: #d4d4d4">/</span>build<span style="color: #608b4e">/**
+!apps/server/scripts/
+!apps/server/scripts/**
+!apps/gateway/
+!apps/gateway/build/
+!apps/gateway/build/gateway
+</span></span></code></pre>
+                </div>
+                <p>
+                  Note the pattern: deny everything, then re-include. <strong>Every ancestor directory of a kept path needs
+                    its own <code>!</code> line</strong> — once a parent is excluded, a deeper negation alone won't reliably pull it back in.
+                </p>
+                <h2 id="6-bootstrap-script" anchor="true"><span>6. Bootstrap Script</span><a href="/deployment/fly-io#6-bootstrap-script">#</a></h2>
+                <p>
+                  Migrations and any first-run seeding go in their own script. This one also creates the admin account
+                  a gateway process signs in as; skip that half if you don't need one.
+                </p>
+                <div class="code-block">
+                  <!--@jaspr_content:code_block_copy_button-->
+                  <button>
+                    <svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" width="18px" height="18px">
+                      <rect rx="2" ry="2" x="8" y="8" width="14" height="14"></rect>
+                      <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path>
+                    </svg>
+                  </button>
+                  <!--/@jaspr_content:code_block_copy_button-->
+                  <pre><code><span style="color: #b9eeff"><span>#!/bin/sh
+set -eu
+
+./zonai db migrate apply
+
+if ./zonai db admin list | grep -Fq "email: $<span style="color: #5caeef">{</span>ADMIN_EMAIL<span style="color: #5caeef">}</span>"; then
+  echo "Admin account for $<span style="color: #5caeef">{</span>ADMIN_EMAIL<span style="color: #5caeef">}</span> already exists, skipping."
+else
+  # --no-verify: no SMTP configured, so the verification email has nowhere to go
+  ./zonai db admin add -e "$<span style="color: #5caeef">{</span>ADMIN_EMAIL<span style="color: #5caeef">}</span>" -p "$<span style="color: #5caeef">{</span>ADMIN_PASSWORD<span style="color: #5caeef">}</span>" --no-verify
+fi
+</span></span></code></pre>
+                </div>
+                <p>Four things this ordering depends on:</p>
+                <ul>
+                  <li>
+                    <strong>Migrations first.</strong> <code>zonai serve</code> auto-applies pending migrations, but that's too late here:
+                    <code>db admin</code> touches a table a migration creates, so on a fresh volume it fails unless migrations
+                    have already been applied.
+                  </li>
+                  <li>
+                    <strong>Check-then-add, not add.</strong> <code>db admin add</code> errors on a duplicate email and returns a non-zero
+                    exit code, which under <code>set -e</code> kills the boot. Checking first makes the script safe to run on
+                    every boot.
+                  </li>
+                  <li>
+                    <strong>Match the <code>list</code> output loosely.</strong> <code>db admin list</code> indents each field (
+                    <code>  email: you@example.com</code>),
+                    so <code>grep -Fqx "email: ..."</code> never matches and you'd re-add on every boot. Plain 
+                    <code>grep -Fq</code> on the
+                    substring is what works.
+                  </li>
+                  <li>
+                    <strong>No server needed.</strong> Both commands work against the database file directly, which is why this can
+                    run before <code>zonai serve</code> starts.
+                  </li>
+                </ul>
+                <div class="callout callout-warning">
+                  <span><svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" width="20px" height="20px"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"></path><path d="M12 9v4"></path><path d="M12 17h.01"></path></svg></span>
+                  <span><p><strong>Run this from your start script, not a Fly <code>release_command</code>.</strong> Release-command machines get the
+network, env and secrets but <strong>no volumes</strong> — per Fly's config reference: <em>"It has no volumes
+attached, and the Machine is destroyed after the command completes."</em> Anything written to your data
+directory from one is discarded, silently, after reporting success. Since both commands above write
+to the data directory, they have to run on the app machine.</p></span>
+                </div>
+                <h2 id="7-start-script" anchor="true"><span>7. Start Script</span><a href="/deployment/fly-io#7-start-script">#</a></h2>
+                <p>Sequences everything on boot. This is the image's <code>CMD</code>.</p>
+                <div class="code-block">
+                  <!--@jaspr_content:code_block_copy_button-->
+                  <button>
+                    <svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" width="18px" height="18px">
+                      <rect rx="2" ry="2" x="8" y="8" width="14" height="14"></rect>
+                      <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path>
+                    </svg>
+                  </button>
+                  <!--/@jaspr_content:code_block_copy_button-->
+                  <pre><code><span style="color: #b9eeff"><span>#!/usr/bin/env bash
+set -euo pipefail
+
+ZONAI_PORT="$<span style="color: #5caeef">{</span>ZONAI_INTERNAL_PORT:-8081<span style="color: #5caeef">}</span>"
+
+# Runs here, on the app machine, because this is where the volume is mounted.
+./scripts/ensure_admin.sh
+
+./zonai serve --release --host 127.0.0.1 --port "$ZONAI_PORT" &amp;
+ZONAI_PID=$!
+GATEWAY_PID=""
+
+shutdown<span style="color: #5caeef">(</span><span style="color: #5caeef">)</span> <span style="color: #5caeef">{</span>
+  kill -TERM "$ZONAI_PID" 2&gt;/dev/null || true
+  <span style="color: #dfb976">[</span> -n "$GATEWAY_PID" <span style="color: #dfb976">]</span> &amp;&amp; kill -TERM "$GATEWAY_PID" 2&gt;/dev/null || true
+<span style="color: #5caeef">}</span>
+trap shutdown TERM INT
+
+# Wait for zonai to actually answer before starting the public process,
+# which signs in at startup and would fail against a half-booted server.
+# Bounded, and gives up if the zonai process itself is gone.
+boot_deadline=$<span style="color: #5caeef">(</span><span style="color: #dfb976">(</span> SECONDS + 120 <span style="color: #dfb976">)</span><span style="color: #5caeef">)</span>
+until curl -fs "http://127.0.0.1:$<span style="color: #5caeef">{</span>ZONAI_PORT<span style="color: #5caeef">}</span>/health" &gt;/dev/null 2&gt;&amp;1; do
+  if ! kill -0 "$ZONAI_PID" 2&gt;/dev/null; then
+    echo "zonai exited before it became healthy; exiting so Fly restarts" &gt;&amp;2
+    exit 1
+  fi
+  if <span style="color: #5caeef">[</span> "$SECONDS" -ge "$boot_deadline" <span style="color: #5caeef">]</span>; then
+    echo "zonai did not become healthy within 120s; exiting so Fly restarts" &gt;&amp;2
+    shutdown
+    exit 1
+  fi
+  sleep 0.5
+done
+
+export ZONAI_BASE_URL="http://127.0.0.1:$<span style="color: #5caeef">{</span>ZONAI_PORT<span style="color: #5caeef">}</span>"
+
+./gateway &amp;
+GATEWAY_PID=$!
+
+# Supervise both. Whichever dies first takes the machine down with it.
+status=0
+wait -n || status=$?
+echo "a supervised process exited <span style="color: #5caeef">(</span>status $<span style="color: #dfb976">{</span>status<span style="color: #dfb976">}</span><span style="color: #5caeef">)</span>; shutting down so Fly restarts" &gt;&amp;2
+shutdown
+exit 1
+</span></span></code></pre>
+                </div>
+                <p>Points that matter:</p>
+                <ul>
+                  <li>
+                    <code>--release</code> on <code>zonai serve</code> disables file watching and recompiling. Always use it in production;
+                    <code>build --release</code> must have run first.
+                  </li>
+                  <li>
+                    <code>zonai serve</code> binds to <strong>127.0.0.1</strong> so it is never publicly reachable. The front-end process is
+                    the only thing on a public port. See <a href="/deployment/server-binding">Server Binding</a>.
+                  </li>
+                  <li>
+                    The health poll hits zonai's own built-in <code>GET /health</code>. Your public process's health path is
+                    whatever you gave it — the two are different endpoints on different ports.
+                  </li>
+                  <li>
+                    <strong>Neither process is <code>exec</code>'d.</strong> The script stays alive as their parent so it can notice one dying.
+                  </li>
+                  <li>
+                    <code>wait -n</code> needs bash, which is why the shebang is <code>bash</code> and not <code>sh</code>; the Debian image from
+                    <a href="#4-dockerfile">step 4</a> has bash 5.
+                  </li>
+                </ul>
+                <div class="callout callout-warning">
+                  <span><svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" width="20px" height="20px"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"></path><path d="M12 9v4"></path><path d="M12 17h.01"></path></svg></span>
+                  <span><p><strong>Don't <code>exec</code> the front-end process.</strong> <code>exec ./gateway</code> is the tempting last line — it's the usual
+advice for signal delivery — but it replaces the shell, destroying the only process that knew
+<code>zonai serve</code> existed. The gateway inherits zonai as a child and never <code>wait()</code>s on it, so if zonai
+dies it becomes an unreaped <strong>zombie</strong> while the gateway keeps serving its public port perfectly
+happily and every proxied request fails against a backend that is no longer there. Nothing exits,
+nothing logs, and Fly never restarts the machine. This is not hypothetical — it produced a
+multi-hour production outage that reported itself healthy the entire time.</p><p>The signal argument doesn't hold on Fly anyway: PID 1 in a Fly machine is Fly's own <code>init</code>, so your
+script is already a direct child of it and receives <code>SIGTERM</code> normally. The <code>trap</code> above forwards it
+to both children.</p><p>The bounded boot loop matters for the same reason. An unbounded <code>until curl</code> means a zonai that dies
+<em>during</em> startup — an OOM mid-migration, a bad <code>.env</code>, a corrupt volume — leaves the loop spinning
+forever with the front-end process never started at all. Same silent hang, reached a different way,
+and worse: nothing is listening on the public port to even return a 500.</p></span>
+                </div>
+                <p>
+                  <strong>If you have no front-end process:</strong> drop the poll and run zonai in the foreground bound to the
+                  public port — <code>exec ./zonai serve --release --host 0.0.0.0 --port 8080</code>.
+                </p>
+                <h2 id="8-flytoml" anchor="true"><span>8. <code>fly.toml</code></span><a href="/deployment/fly-io#8-flytoml">#</a></h2>
+                <div class="code-block">
+                  <!--@jaspr_content:code_block_copy_button-->
+                  <button>
+                    <svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" width="18px" height="18px">
+                      <rect rx="2" ry="2" x="8" y="8" width="14" height="14"></rect>
+                      <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path>
+                    </svg>
+                  </button>
+                  <!--/@jaspr_content:code_block_copy_button-->
+                  <pre><code><span style="color: #b9eeff"><span>app = "myapp-server"
+primary_region = "iad"
+
+<span style="color: #5caeef">[</span>build<span style="color: #5caeef">]</span>
+  dockerfile = "Dockerfile"
+
+# No <span style="color: #5caeef">[</span>deploy<span style="color: #5caeef">]</span> release_command — see step 6.
+
+<span style="color: #5caeef">[</span>env<span style="color: #5caeef">]</span>
+  ZONAI_INTERNAL_PORT = "8081"
+
+# Required. The SQLite database lives here; without a volume every deploy
+# and restart starts from an empty database.
+<span style="color: #5caeef">[</span><span style="color: #dfb976">[</span>mounts<span style="color: #dfb976">]</span><span style="color: #5caeef">]</span>
+  source = "myapp_data"
+  destination = "/app/.zonai/data"
+
+<span style="color: #5caeef">[</span>http_service<span style="color: #5caeef">]</span>
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = false
+  auto_start_machines = true
+  min_machines_running = 1
+
+  <span style="color: #5caeef">[</span><span style="color: #dfb976">[</span>http_service.checks<span style="color: #dfb976">]</span><span style="color: #5caeef">]</span>
+    grace_period = "15s"
+    interval = "15s"
+    method = "GET"
+    path = "/healthz"
+    timeout = "5s"
+
+<span style="color: #5caeef">[</span><span style="color: #dfb976">[</span>vm<span style="color: #dfb976">]</span><span style="color: #5caeef">]</span>
+  size = "shared-cpu-1x"
+  memory = "512mb"
+</span></span></code></pre>
+                </div>
+                <p>
+                  <code>internal_port</code> must match whatever your public process listens on, and the check's <code>path</code>
+                   must be an
+                  endpoint <em>that</em> process serves (<code>/healthz</code> here). If zonai is the public process, use its built-in
+                  <code>/health</code> instead.
+                </p>
+                <h3 id="a-front-end-health-check-must-probe-zonai" anchor="true">
+                  <span>A Front-End Health Check Must Probe Zonai</span><a href="/deployment/fly-io#a-front-end-health-check-must-probe-zonai">#</a>
+                </h3>
+                <p>
+                  If your public process is a front end for zonai, its health endpoint has to actually <em>probe</em> zonai —
+                  <code>GET /health</code> on the internal port — and return non-2xx when that fails. The obvious handler:
+                </p>
+                <div class="code-block">
+                  <!--@jaspr_content:code_block_copy_button-->
+                  <button>
+                    <svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" width="18px" height="18px">
+                      <rect rx="2" ry="2" x="8" y="8" width="14" height="14"></rect>
+                      <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path>
+                    </svg>
+                  </button>
+                  <!--/@jaspr_content:code_block_copy_button-->
+                  <pre><code><span style="color: #b9eeff"><span style="color: #608b4e">// in your gateway, not zonai — shelf shown here</span>
+<span style="color: #c586c0">if</span><span> <span style="color: #5caeef">(</span>request</span><span style="color: #d4d4d4">.</span>url<span style="color: #d4d4d4">.</span>path <span style="color: #d4d4d4">==</span> <span style="color: #ce9178">'healthz'</span><span><span style="color: #5caeef">)</span> <span style="color: #5caeef">{</span>
+  </span><span style="color: #c586c0">return</span> <span style="color: #4ec9b0">Response</span><span style="color: #d4d4d4">.</span><span style="color: #dcdcaa">ok</span><span style="color: #dfb976">(</span><span style="color: #ce9178">'ok'</span><span style="color: #dfb976">)</span><span style="color: #d4d4d4">;</span>   <span style="color: #608b4e">// reports only that *this* process is alive</span><span>
+<span style="color: #5caeef">}</span>
+</span></span></code></pre>
+                </div>
+                <p>
+                  satisfies the sentence above exactly and is a health check that <strong>cannot fail</strong>. It reports on the
+                  liveness of the process answering the question, which is never the process at risk. Paired with an
+                  unsupervised <code>zonai serve</code> (<a href="#7-start-script">step 7</a>), Fly's check passes indefinitely on a machine
+                  whose entire reason for existing is dead.
+                </p>
+                <p>Fail closed instead:</p>
+                <div class="code-block">
+                  <!--@jaspr_content:code_block_copy_button-->
+                  <button>
+                    <svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" width="18px" height="18px">
+                      <rect rx="2" ry="2" x="8" y="8" width="14" height="14"></rect>
+                      <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path>
+                    </svg>
+                  </button>
+                  <!--/@jaspr_content:code_block_copy_button-->
+                  <pre><code><span style="color: #b9eeff"><span style="color: #4ec9b0">Future</span><span style="color: #d4d4d4">&lt;</span><span style="color: #4ec9b0">Response</span><span style="color: #d4d4d4">&gt;</span> <span style="color: #dcdcaa">_healthz</span><span style="color: #5caeef">(</span><span style="color: #4ec9b0">String</span><span> zonaiBaseUrl<span style="color: #5caeef">)</span> </span><span style="color: #c586c0">async</span><span> <span style="color: #5caeef">{</span>
+  </span><span style="color: #569cd6">final</span> client <span style="color: #d4d4d4">=</span> <span style="color: #4ec9b0">HttpClient</span><span><span style="color: #dfb976">(</span><span style="color: #dfb976">)</span></span><span style="color: #d4d4d4">..</span>connectionTimeout <span style="color: #d4d4d4">=</span> <span style="color: #569cd6">const</span> <span style="color: #4ec9b0">Duration</span><span><span style="color: #dfb976">(</span>seconds</span><span style="color: #d4d4d4">:</span> <span style="color: #b5cea8">3</span><span style="color: #dfb976">)</span><span style="color: #d4d4d4">;</span>
+  <span style="color: #c586c0">try</span><span> <span style="color: #dfb976">{</span>
+    </span><span style="color: #569cd6">final</span> request <span style="color: #d4d4d4">=</span> <span style="color: #c586c0">await</span> client<span style="color: #d4d4d4">.</span><span style="color: #dcdcaa">getUrl</span><span style="color: #c172d9">(</span><span style="color: #4ec9b0">Uri</span><span style="color: #d4d4d4">.</span><span style="color: #dcdcaa">parse</span><span style="color: #4fb1bc">(</span><span style="color: #ce9178">'$</span><span style="color: #ce9178">zonaiBaseUrl</span><span style="color: #ce9178">/health'</span><span><span style="color: #4fb1bc">)</span><span style="color: #c172d9">)</span></span><span style="color: #d4d4d4">;</span>
+    <span style="color: #569cd6">final</span> response <span style="color: #d4d4d4">=</span> <span style="color: #c586c0">await</span> request<span style="color: #d4d4d4">.</span><span style="color: #dcdcaa">close</span><span><span style="color: #c172d9">(</span><span style="color: #c172d9">)</span></span><span style="color: #d4d4d4">.</span><span style="color: #dcdcaa">timeout</span><span style="color: #c172d9">(</span><span style="color: #569cd6">const</span> <span style="color: #4ec9b0">Duration</span><span><span style="color: #4fb1bc">(</span>seconds</span><span style="color: #d4d4d4">:</span> <span style="color: #b5cea8">3</span><span><span style="color: #4fb1bc">)</span><span style="color: #c172d9">)</span></span><span style="color: #d4d4d4">;</span>
+    <span style="color: #c586c0">await</span> response<span style="color: #d4d4d4">.</span><span style="color: #dcdcaa">drain</span><span style="color: #d4d4d4">&lt;</span><span style="color: #569cd6">void</span><span style="color: #d4d4d4">&gt;</span><span><span style="color: #c172d9">(</span><span style="color: #c172d9">)</span></span><span style="color: #d4d4d4">;</span>
+    <span style="color: #c586c0">if</span><span> <span style="color: #c172d9">(</span>response</span><span style="color: #d4d4d4">.</span>statusCode <span style="color: #d4d4d4">&gt;=</span> <span style="color: #b5cea8">200</span> <span style="color: #d4d4d4">&amp;&amp;</span> response<span style="color: #d4d4d4">.</span>statusCode <span style="color: #d4d4d4">&lt;</span> <span style="color: #b5cea8">300</span><span><span style="color: #c172d9">)</span> <span style="color: #c172d9">{</span>
+      </span><span style="color: #c586c0">return</span> <span style="color: #4ec9b0">Response</span><span style="color: #d4d4d4">.</span><span style="color: #dcdcaa">ok</span><span style="color: #4fb1bc">(</span><span style="color: #ce9178">'ok'</span><span style="color: #4fb1bc">)</span><span style="color: #d4d4d4">;</span><span>
+    <span style="color: #c172d9">}</span>
+    </span><span style="color: #c586c0">return</span> <span style="color: #4ec9b0">Response</span><span style="color: #c172d9">(</span><span style="color: #b5cea8">503</span><span style="color: #d4d4d4">,</span> body<span style="color: #d4d4d4">:</span> <span style="color: #ce9178">'zonai unhealthy: HTTP </span><span style="color: #ce9178">${</span><span style="color: #ce9178">response</span><span style="color: #ce9178">.</span><span style="color: #ce9178">statusCode</span><span style="color: #ce9178">}</span><span style="color: #ce9178">'</span><span style="color: #c172d9">)</span><span style="color: #d4d4d4">;</span><span>
+  <span style="color: #dfb976">}</span> </span><span style="color: #c586c0">on</span> <span style="color: #4ec9b0">Object</span> <span style="color: #c586c0">catch</span><span> <span style="color: #dfb976">(</span>error<span style="color: #dfb976">)</span> <span style="color: #dfb976">{</span>
+    </span><span style="color: #c586c0">return</span> <span style="color: #4ec9b0">Response</span><span style="color: #c172d9">(</span><span style="color: #b5cea8">503</span><span style="color: #d4d4d4">,</span> body<span style="color: #d4d4d4">:</span> <span style="color: #ce9178">'zonai unreachable: $</span><span style="color: #ce9178">error</span><span style="color: #ce9178">'</span><span style="color: #c172d9">)</span><span style="color: #d4d4d4">;</span><span>
+  <span style="color: #dfb976">}</span> </span><span style="color: #c586c0">finally</span><span> <span style="color: #dfb976">{</span>
+    client</span><span style="color: #d4d4d4">.</span><span style="color: #dcdcaa">close</span><span><span style="color: #c172d9">(</span>force</span><span style="color: #d4d4d4">:</span> <span style="color: #569cd6">true</span><span style="color: #c172d9">)</span><span style="color: #d4d4d4">;</span><span>
+  <span style="color: #dfb976">}</span>
+<span style="color: #5caeef">}</span>
+</span></span></code></pre>
+                </div>
+                <p>
+                  Keep your timeout under the <code>[[http_service.checks]] timeout</code> (5s above) so you answer 503 yourself
+                  rather than having the edge time the check out with no detail about which component is down.
+                </p>
+                <p>
+                  Worth testing against a real loopback <code>HttpServer</code> and a genuinely closed port — a stubbed client
+                  won't reproduce connection-refused, which is the case that actually matters.
+                </p>
+                <h3 id="sizing-the-machine" anchor="true"><span>Sizing the Machine</span><a href="/deployment/fly-io#sizing-the-machine">#</a></h3>
+                <p>
+                  The <code>[[vm]]</code> block is not optional boilerplate. <strong>Omit it and Fly gives you its 256MB default</strong>,
+                  which leaves about 207MB usable after the kernel's share — under which the kernel OOM-kills
+                  <code>zonai serve</code> during ordinary work. Measured on a single-machine deployment with a small front-end
+                  process:
+                </p>
+                <table>
+                  <thead><tr><th></th><th></th></tr></thead>
+                  <tbody>
+                    <tr><td><code>zonai serve</code> RSS, idle</td><td>69 MB</td></tr>
+                    <tr><td><code>zonai serve</code> peak RSS (<code>VmHWM</code>), light traffic</td><td>88 MB</td></tr>
+                    <tr><td><code>zonai serve</code> anon-RSS at the moment of an OOM kill</td><td>121 MB</td></tr>
+                    <tr><td>a small Dart front-end process, peak RSS</td><td>12 MB</td></tr>
+                  </tbody>
+                </table>
+                <p>
+                  Treat <code>512mb</code> as a <strong>floor</strong>, not a default to shrink from — idle is only ~69MB, but the jump to
+                  121MB came from one admin creating a user. Workers are separate executables invoked per request, so
+                  per-request memory is real and additive; sizing from an idle measurement under-provisions. 1GB is a
+                  comfortable place to sit if you're not counting pennies.
+                </p>
+                <p>
+                  One debugging note: <code>zonai serve</code> reserves ~620MB of <strong>virtual</strong> address space at idle, so that is
+                  the <code>total-vm:</code> figure in any OOM message. It is harmless and it is not the number that matters —
+                  read <code>anon-rss:</code> instead, or you'll chase the wrong thing.
+                </p>
+                <p>
+                  The volume <code>destination</code> must match zonai's data directory — <code>/app/.zonai/data</code>
+                   when <code>WORKDIR</code> is
+                  <code>/app</code>, since the database lives at <code>.zonai/data</code> relative to the app directory.
+                </p>
+                <p>
+                  <code>auto_stop_machines = false</code> with <code>min_machines_running = 1</code> keeps the single machine up. If you'd
+                  rather scale to zero, be aware every cold start re-runs the bootstrap script.
+                </p>
+                <h2 id="9-create-the-app-volume-and-secrets" anchor="true">
+                  <span>9. Create the App, Volume, and Secrets</span><a href="/deployment/fly-io#9-create-the-app-volume-and-secrets">#</a>
+                </h2>
+                <p>The volume must exist before the first deploy:</p>
+                <div class="code-block">
+                  <!--@jaspr_content:code_block_copy_button-->
+                  <button>
+                    <svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" width="18px" height="18px">
+                      <rect rx="2" ry="2" x="8" y="8" width="14" height="14"></rect>
+                      <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path>
+                    </svg>
+                  </button>
+                  <!--/@jaspr_content:code_block_copy_button-->
+                  <pre><code><span style="color: #b9eeff">fly apps create myapp-server
+
+fly volumes create myapp_data --app myapp-server --region iad --size 1
+
+fly secrets set --app myapp-server \
+  ADMIN_EMAIL="admin@example.com" \
+  ADMIN_PASSWORD="&lt;generate a strong one&gt;" \
+  STRIPE_WEBHOOK_SECRET="&lt;from your provider's dashboard&gt;"
+</span></code></pre>
+                </div>
+                <p>
+                  The volume's <code>--region</code> must match <code>primary_region</code>, and its name must match <code>[[mounts]] source</code>.
+                  Size is in GB.
+                </p>
+                <p>
+                  These secrets are the <strong>runtime</strong> ones from <a href="#compile-time-vs-runtime-config">step 2's table</a>
+                   — read
+                  by your own process via <code>Platform.environment</code>. Zonai's own config secrets went in at build time via
+                  <code>.env</code>.
+                </p>
+                <h2 id="10-deploy-and-verify" anchor="true"><span>10. Deploy and Verify</span><a href="/deployment/fly-io#10-deploy-and-verify">#</a></h2>
+                <div class="code-block">
+                  <!--@jaspr_content:code_block_copy_button-->
+                  <button>
+                    <svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" width="18px" height="18px">
+                      <rect rx="2" ry="2" x="8" y="8" width="14" height="14"></rect>
+                      <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path>
+                    </svg>
+                  </button>
+                  <!--/@jaspr_content:code_block_copy_button-->
+                  <pre><code><span style="color: #b9eeff">./scripts/build_deploy_bundle.sh   # rebuild the artifacts
+fly deploy
+</span></code></pre>
+                </div>
+                <p>
+                  <code>fly deploy</code> with no flags uses Fly's remote builder, which is what you want: the bundle is already
+                  <code>linux/x64</code> and the image must be too. Avoid <code>--local-only</code> on Apple Silicon — it builds an 
+                  <code>arm64</code>
+                  image around <code>x64</code> binaries, which only fails once the machine boots. If you do want to build
+                  locally, build the image explicitly with <code>--platform linux/amd64</code> first (see
+                  <a href="#verifying-locally-optional">Verifying locally</a>).
+                </p>
+                <p>Then confirm it's actually running:</p>
+                <div class="code-block">
+                  <!--@jaspr_content:code_block_copy_button-->
+                  <button>
+                    <svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" width="18px" height="18px">
+                      <rect rx="2" ry="2" x="8" y="8" width="14" height="14"></rect>
+                      <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path>
+                    </svg>
+                  </button>
+                  <!--/@jaspr_content:code_block_copy_button-->
+                  <pre><code><span style="color: #b9eeff">fly status
+
+PROCESS │ ID             │ VERSION │ REGION │ STATE   │ CHECKS
+app     │ 8e2579c7724398 │ 3       │ iad    │ started │ 1 total, 1 passing
+</span></code></pre>
+                </div>
+                <div class="callout callout-warning">
+                  <span><svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" width="20px" height="20px"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"></path><path d="M12 9v4"></path><path d="M12 17h.01"></path></svg></span>
+                  <span><p><strong>Check for <code>started</code>, not just a successful deploy.</strong> If the machine previously exhausted its
+restart budget, Fly updates the config, reports the deploy as successful, and leaves the machine
+<code>stopped</code>. Start it explicitly with <code>fly machine start &lt;machine-id&gt;</code>.</p></span>
+                </div>
+                <p>Boot logs should look like this on a fresh volume:</p>
+                <div class="code-block">
+                  <!--@jaspr_content:code_block_copy_button-->
+                  <button>
+                    <svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" width="18px" height="18px">
+                      <rect rx="2" ry="2" x="8" y="8" width="14" height="14"></rect>
+                      <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path>
+                    </svg>
+                  </button>
+                  <!--/@jaspr_content:code_block_copy_button-->
+                  <pre><code><span style="color: #b9eeff"><span style="color: #4ec9b0">Applied</span> pending <span style="color: #4ec9b0">SQL</span> migrations
+<span style="color: #4ec9b0">Admin</span> created successfully
+<span style="color: #4ec9b0">Serving</span> at http<span style="color: #d4d4d4">:</span><span style="color: #608b4e">//127.0.0.1:8081/</span>
+gateway listening <span style="color: #c586c0">on</span> <span style="color: #d4d4d4">:</span><span style="color: #b5cea8">8080</span><span style="color: #d4d4d4">,</span> proxying to http<span style="color: #d4d4d4">:</span><span style="color: #608b4e">//127.0.0.1:8081</span>
+<span style="color: #4ec9b0">Health</span> check <span style="color: #ce9178">'servicecheck-00-http-8080'</span> <span style="color: #c586c0">on</span> port <span style="color: #b5cea8">8080</span> <span style="color: #d4d4d4">is</span> now passing<span style="color: #d4d4d4">.</span>
+</span></code></pre>
+                </div>
+                <p>
+                  On later boots the second line becomes <code>Admin account for … already exists, skipping.</code> Finally, from
+                  outside:
+                </p>
+                <div class="code-block">
+                  <!--@jaspr_content:code_block_copy_button-->
+                  <button>
+                    <svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" width="18px" height="18px">
+                      <rect rx="2" ry="2" x="8" y="8" width="14" height="14"></rect>
+                      <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path>
+                    </svg>
+                  </button>
+                  <!--/@jaspr_content:code_block_copy_button-->
+                  <pre><code><span style="color: #b9eeff"><span>curl -s -o /dev/null -w "%<span style="color: #5caeef">{</span>http_code<span style="color: #5caeef">}</span>\n" https://myapp-server.fly.dev/healthz
+# 200
+</span></span></code></pre>
+                </div>
+                <p>And, once, to see which dispatch the deployed binary got:</p>
+                <div class="code-block">
+                  <!--@jaspr_content:code_block_copy_button-->
+                  <button>
+                    <svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" width="18px" height="18px">
+                      <rect rx="2" ry="2" x="8" y="8" width="14" height="14"></rect>
+                      <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path>
+                    </svg>
+                  </button>
+                  <!--/@jaspr_content:code_block_copy_button-->
+                  <pre><code><span style="color: #b9eeff"><span>fly ssh console -C '/app/zonai version'
+# Zonai: v0.6.2
+# Ops/rules: in-process <span style="color: #5caeef">(</span>project-linked<span style="color: #5caeef">)</span>
+</span></span></code></pre>
+                </div>
+                <p>
+                  The other answer is <code>worker IPC</code>, where ops and rules run as separate processes instead. Both serve
+                  identically and nothing in the logs distinguishes them, which is exactly why it's worth asking once.
+                </p>
+                <h2 id="redeploying" anchor="true"><span>Redeploying</span><a href="/deployment/fly-io#redeploying">#</a></h2>
+                <p>The whole loop, every time:</p>
+                <div class="code-block">
+                  <!--@jaspr_content:code_block_copy_button-->
+                  <button>
+                    <svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" width="18px" height="18px">
+                      <rect rx="2" ry="2" x="8" y="8" width="14" height="14"></rect>
+                      <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path>
+                    </svg>
+                  </button>
+                  <!--/@jaspr_content:code_block_copy_button-->
+                  <pre><code><span style="color: #b9eeff">./scripts/build_deploy_bundle.sh
+fly deploy
+fly status
+</span></code></pre>
+                </div>
+                <p>
+                  The build script is not optional — <code>fly deploy</code> only packages whatever is currently in <code>build/</code>.
+                  Skipping it silently ships your previous binaries.
+                </p>
+                <h2 id="verifying-locally-optional" anchor="true">
+                  <span>Verifying Locally (Optional)</span><a href="/deployment/fly-io#verifying-locally-optional">#</a>
+                </h2>
+                <p>
+                  If you'd rather not discover problems on Fly, the same image runs locally. On an ARM machine you need
+                  the platform flag:
+                </p>
+                <div class="code-block">
+                  <!--@jaspr_content:code_block_copy_button-->
+                  <button>
+                    <svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" width="18px" height="18px">
+                      <rect rx="2" ry="2" x="8" y="8" width="14" height="14"></rect>
+                      <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path>
+                    </svg>
+                  </button>
+                  <!--/@jaspr_content:code_block_copy_button-->
+                  <pre><code><span style="color: #b9eeff"><span>docker build --platform linux/amd64 -t myapp:verify .
+docker volume create myapp-data
+
+docker run -d --name myapp --platform linux/amd64 \
+  -e ADMIN_EMAIL=verify@example.com \
+  -e ADMIN_PASSWORD='verify-pw' \
+  -e STRIPE_WEBHOOK_SECRET='test-secret' \
+  -v myapp-data:/app/.zonai/data \
+  -p 8099:8080 myapp:verify
+
+docker logs myapp
+curl -s -o /dev/null -w "%<span style="color: #5caeef">{</span>http_code<span style="color: #5caeef">}</span>\n" http://127.0.0.1:8099/healthz
+</span></span></code></pre>
+                </div>
+                <p>
+                  Restarting the container against the same volume is a good check that your bootstrap script is
+                  genuinely idempotent:
+                </p>
+                <div class="code-block">
+                  <!--@jaspr_content:code_block_copy_button-->
+                  <button>
+                    <svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" width="18px" height="18px">
+                      <rect rx="2" ry="2" x="8" y="8" width="14" height="14"></rect>
+                      <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path>
+                    </svg>
+                  </button>
+                  <!--/@jaspr_content:code_block_copy_button-->
+                  <pre><code><span style="color: #b9eeff">docker restart myapp &amp;&amp; docker logs myapp | tail -5
+</span></code></pre>
+                </div>
+                <p>Clean up with <code>docker rm -f myapp &amp;&amp; docker volume rm myapp-data</code>.</p>
+                <h2 id="dont-ship-a-hardcoded-localhost-baseurl" anchor="true">
+                  <span>Don't Ship a Hardcoded <code>localhost</code> <code>baseUrl</code></span><a href="/deployment/fly-io#dont-ship-a-hardcoded-localhost-baseurl">#</a>
+                </h2>
+                <p>
+                  <code>AppConfig.baseUrl</code> is easy to leave hardcoded to <code>http://localhost:8080</code> during local development
+                  and forget about — it compiles fine, <code>serve</code> never complains, and nothing breaks loudly. It just
+                  means every absolute link the server generates (email templates, magic links, anything built from
+                  <code>baseUrl</code>) silently points at <code>localhost</code> in production.
+                </p>
+                <p>
+                  Read it from <code>.env</code> at build time, as in <a href="#2-put-compile-time-config-in-env">step 2</a>:
+                </p>
+                <div class="code-block">
+                  <!--@jaspr_content:code_block_copy_button-->
+                  <button>
+                    <svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" width="18px" height="18px">
+                      <rect rx="2" ry="2" x="8" y="8" width="14" height="14"></rect>
+                      <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path>
+                    </svg>
+                  </button>
+                  <!--/@jaspr_content:code_block_copy_button-->
+                  <pre><code><span style="color: #b9eeff">baseUrl<span style="color: #d4d4d4">:</span> <span style="color: #569cd6">const</span> <span style="color: #4ec9b0">String</span><span style="color: #d4d4d4">.</span><span style="color: #dcdcaa">fromEnvironment</span><span style="color: #5caeef">(</span><span style="color: #ce9178">'BASE_URL'</span><span style="color: #d4d4d4">,</span> defaultValue<span style="color: #d4d4d4">:</span> <span style="color: #ce9178">'http://localhost:8080'</span><span style="color: #5caeef">)</span><span style="color: #d4d4d4">,</span>
+</span></code></pre>
+                </div>
+                <p>
+                  <code>baseUrl</code> isn't a secret, so a runtime <code>Platform.environment['BASE_URL']</code> plus a 
+                  <code>fly.toml</code> <code>[env]</code>
+                  entry works too, and has the advantage of not needing a rebuild to change. Pick one — the failure
+                  mode to avoid is a literal in the source.
+                </p>
+                <p>
+                  Nothing checks this for you at build or boot time, so it's worth grepping your own <code>AppConfig</code>
+                   for
+                  hardcoded <code>localhost</code> before every first production deploy, not just this one field.
+                </p>
+                <h2 id="if-the-server-segfaults-on-boot" anchor="true">
+                  <span>If the Server Segfaults on Boot</span><a href="/deployment/fly-io#if-the-server-segfaults-on-boot">#</a>
+                </h2>
+                <p>
+                  If a compiled <code>zonai serve</code> crashes with a segfault within a second of starting on Linux — this was a
+                  real, deterministic bug (crossed-SQLite-build ABI mismatch inside <code>raindrop_sqlite</code>'s
+                  <code>ResqliteDelegate.open</code>, opening one database file through two separately-built SQLite libraries)
+                  that reproduced on every architecture. It's fixed upstream as of <code>zonai</code>
+                   <code>main</code> commit <code>3404812</code>
+                  (plus <code>resqlite</code>/<code>raindrop</code> submodule pins). If you hit this, you're likely on a pre-fix commit — see
+                  <a href="https://github.com/mrgnhnt96/zonai/blob/main/docs/known-issues.md#12-compiled-zonai-serve-segfaults-seconds-after-startup-on-linux-x64arm64---sqlite3leavemutexandclosezombie---fixed">known issue #12</a>
+                  
+                  for the full root cause rather than rediscovering it from scratch.
+                </p>
+                <h2 id="appendix-rebuilding-the-framework-from-source" anchor="true">
+                  <span>Appendix: Rebuilding the Framework From Source</span><a href="/deployment/fly-io#appendix-rebuilding-the-framework-from-source">#</a>
+                </h2>
+                <p>
+                  Everything above cross-compiles from your dev machine. This appendix is for a narrower case:
+                  producing the <code>zonai</code> <strong>CLI binary itself</strong> from source — needed only if you're working on the zonai
+                  framework, or you need a fix that isn't published as a release yet.
+                </p>
+                <p>Two limitations a normal consumer deploy never hits:</p>
+                <ul>
+                  <li>
+                    <strong><code>zonai build</code>'s own cross-compile support only produces <code>linux/x64</code>.</strong>
+                     There is no cross-compile
+                    path to <code>linux/arm64</code> today, and a native <code>zonai build</code> on a 
+                    <code>linux/arm64</code> machine fails outright
+                    with <code>Unsupported operation: Unsupported architecture: linux_arm64</code>.
+                  </li>
+                  <li>
+                    <strong>Producing new prebuilt native libraries</strong> (Argon2/libsodium, resqlite's <code>sqlite3mc</code>
+                     build)
+                    requires compiling them natively on each target OS. A consumer app's <code>zonai build</code>
+                     never does this
+                    — it links against the prebuilt libraries the framework ships.
+                  </li>
+                </ul>
+                <p>
+                  The workable recipe, matching zonai's own CI (<code>.github/workflows/compile.yml</code> and the <code>zonai.compile</code>
+                  
+                  script in <code>scripts.yaml</code>), is to build inside a genuine Linux container regardless of your host:
+                </p>
+                <div class="code-block">
+                  <!--@jaspr_content:code_block_copy_button-->
+                  <button>
+                    <svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" width="18px" height="18px">
+                      <rect rx="2" ry="2" x="8" y="8" width="14" height="14"></rect>
+                      <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path>
+                    </svg>
+                  </button>
+                  <!--/@jaspr_content:code_block_copy_button-->
+                  <pre><code><span style="color: #b9eeff">docker run --rm -it --platform linux/amd64 -v "$PWD":/work -w /work dart:stable bash
+</span></code></pre>
+                </div>
+                <p>Inside the container:</p>
+                <div class="code-block">
+                  <!--@jaspr_content:code_block_copy_button-->
+                  <button>
+                    <svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" width="18px" height="18px">
+                      <rect rx="2" ry="2" x="8" y="8" width="14" height="14"></rect>
+                      <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path>
+                    </svg>
+                  </button>
+                  <!--/@jaspr_content:code_block_copy_button-->
+                  <pre><code><span style="color: #b9eeff">apt-get update
+apt-get install -y build-essential autoconf automake libtool m4 pkg-config cmake clang lld git ca-certificates
+</span></code></pre>
+                </div>
+                <p>
+                  <code>build-essential</code> alone is <strong>not</strong> enough — the <code>autoconf</code>/<code>automake</code>/<code>libtool</code>/<code>m4</code>
+                   quartet is
+                  required for the vendored libsodium/Argon2 build. Confirmed against a bare <code>dart:stable</code>
+                   container:
+                  the build hook fails partway through without them.
+                </p>
+                <p>If the repo has private submodules that need a GitHub token to fetch:</p>
+                <div class="code-block">
+                  <!--@jaspr_content:code_block_copy_button-->
+                  <button>
+                    <svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" width="18px" height="18px">
+                      <rect rx="2" ry="2" x="8" y="8" width="14" height="14"></rect>
+                      <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path>
+                    </svg>
+                  </button>
+                  <!--/@jaspr_content:code_block_copy_button-->
+                  <pre><code><span style="color: #b9eeff"><span>git config --global url."https://x-access-token:$<span style="color: #5caeef">{</span>GH_TOKEN<span style="color: #5caeef">}</span>@github.com/".insteadOf "https://github.com/"
+dart pub get
+</span></span></code></pre>
+                </div>
+                <h3 id="path-a-compile-the-cli" anchor="true"><span>Path A: Compile the CLI</span><a href="/deployment/fly-io#path-a-compile-the-cli">#</a></h3>
+                <p>
+                  Install <a href="https://github.com/mrgnhnt96/sip"><code>sip</code></a> and run the framework's compile pipeline:
+                </p>
+                <div class="code-block">
+                  <!--@jaspr_content:code_block_copy_button-->
+                  <button>
+                    <svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" width="18px" height="18px">
+                      <rect rx="2" ry="2" x="8" y="8" width="14" height="14"></rect>
+                      <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path>
+                    </svg>
+                  </button>
+                  <!--/@jaspr_content:code_block_copy_button-->
+                  <pre><code><span style="color: #b9eeff">dart pub global activate --source git https://github.com/mrgnhnt96/sip.git --git-ref main
+dart pub global run sip_cli:sip run zonai compile
+</span></code></pre>
+                </div>
+                <p>
+                  This runs <code>version.gen</code>, <code>server.copy-to-cli</code>, <code>resqlite.gen</code>, <code>argon2.gen</code>, 
+                  <code>web.gen</code>, then the
+                  final <code>dart compile exe</code> — roughly 24 minutes from a cold cache.
+                </p>
+                <p>Compiling manually instead of via <code>sip</code> requires passing the compiled marker explicitly:</p>
+                <div class="code-block">
+                  <!--@jaspr_content:code_block_copy_button-->
+                  <button>
+                    <svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" width="18px" height="18px">
+                      <rect rx="2" ry="2" x="8" y="8" width="14" height="14"></rect>
+                      <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path>
+                    </svg>
+                  </button>
+                  <!--/@jaspr_content:code_block_copy_button-->
+                  <pre><code><span style="color: #b9eeff">dart compile exe -D__ZONAI_COMPILED__=true bin/zonai.dart -o zonai
+</span></code></pre>
+                </div>
+                <p>
+                  Without it, <code>zonai build</code>'s "copy the currently-running compiled binary" fast path never triggers and
+                  it falls back to downloading a GitHub release — which fails for a private repo or an unpublished
+                  version.
+                </p>
+                <h3 id="path-b-use-a-release-binary" anchor="true">
+                  <span>Path B: Use a Release Binary</span><a href="/deployment/fly-io#path-b-use-a-release-binary">#</a>
+                </h3>
+                <p>
+                  Prebuilt binaries ship as GitHub release assets (<code>zonai-linux-x64.zip</code>, <code>zonai-linux-arm64.zip</code>, …)
+                  as of v0.3.4. Much faster than a from-scratch compile:
+                </p>
+                <div class="code-block">
+                  <!--@jaspr_content:code_block_copy_button-->
+                  <button>
+                    <svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" width="18px" height="18px">
+                      <rect rx="2" ry="2" x="8" y="8" width="14" height="14"></rect>
+                      <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path>
+                    </svg>
+                  </button>
+                  <!--/@jaspr_content:code_block_copy_button-->
+                  <pre><code><span style="color: #b9eeff">gh release list --repo mrgnhnt96/zonai
+gh api repos/mrgnhnt96/zonai/releases/tags/vX.Y.Z
+</span></code></pre>
+                </div>
+                <p>
+                  Because the repo is private, the auth header goes on the <strong>asset download URL</strong>, not just the
+                  release-metadata call:
+                </p>
+                <div class="code-block">
+                  <!--@jaspr_content:code_block_copy_button-->
+                  <button>
+                    <svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" width="18px" height="18px">
+                      <rect rx="2" ry="2" x="8" y="8" width="14" height="14"></rect>
+                      <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path>
+                    </svg>
+                  </button>
+                  <!--/@jaspr_content:code_block_copy_button-->
+                  <pre><code><span style="color: #b9eeff">curl -L \
+  -H "Authorization: token $GH_TOKEN" \
+  -H "Accept: application/octet-stream" \
+  "&lt;asset_url&gt;" \
+  -o zonai.zip
+
+unzip zonai.zip
+</span></code></pre>
+                </div>
+                <p>Verify you got the architecture you expect (<code>file zonai</code>) before trusting it.</p>
+                <h3 id="then-build-the-app-bundle" anchor="true"><span>Then Build the App Bundle</span><a href="/deployment/fly-io#then-build-the-app-bundle">#</a></h3>
+                <p>
+                  Drop the Linux binary into your app directory, replacing the gitignored dev binary, and build as
+                  normal — still inside the same <code>linux/amd64</code> container:
+                </p>
+                <div class="code-block">
+                  <!--@jaspr_content:code_block_copy_button-->
+                  <button>
+                    <svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" width="18px" height="18px">
+                      <rect rx="2" ry="2" x="8" y="8" width="14" height="14"></rect>
+                      <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path>
+                    </svg>
+                  </button>
+                  <!--/@jaspr_content:code_block_copy_button-->
+                  <pre><code><span style="color: #b9eeff">cp zonai path/to/your-app/server/zonai
+cd path/to/your-app/server
+./zonai build --release
+</span></code></pre>
+                </div>
+                <p>From there, rejoin the main path at <a href="#4-dockerfile">step 4</a>.</p>
+              </section>
+              <div class="content-footer">
+                <nav class="page-nav" aria-label="Pagination">
+                  <a class="page-nav-link page-nav-prev" href="/deployment/cross-compilation"><span class="page-nav-label">Previous</span><span class="page-nav-title">Cross-Compilation</span></a>
+                </nav>
+              </div>
+            </div>
+            <aside class="toc">
+              <div>
+                <h3>On this page</h3>
+                <ul>
+                  <li style="padding-left: 0em"><a href="/deployment/fly-io#do-you-even-need-docker">Do You Even Need Docker?</a></li>
+                  <li style="padding-left: 0em"><a href="/deployment/fly-io#what-you-end-up-with">What You End Up With</a></li>
+                  <li style="padding-left: 0em"><a href="/deployment/fly-io#prerequisites">Prerequisites</a></li>
+                  <li style="padding-left: 0em"><a href="/deployment/fly-io#1-tell-zonai-what-to-build-for">1. Tell Zonai What to Build For</a></li>
+                  <li style="padding-left: 0em"><a href="/deployment/fly-io#2-put-compile-time-config-in-env">2. Put Compile-Time Config in .env</a></li>
+                  <li style="padding-left: 0.75em"><a href="/deployment/fly-io#compile-time-vs-runtime-config">Compile-Time vs Runtime Config</a></li>
+                  <li style="padding-left: 0em"><a href="/deployment/fly-io#3-build-the-deploy-bundle">3. Build the Deploy Bundle</a></li>
+                  <li style="padding-left: 0em"><a href="/deployment/fly-io#4-dockerfile">4. Dockerfile</a></li>
+                  <li style="padding-left: 0em"><a href="/deployment/fly-io#5-dockerignore">5. .dockerignore</a></li>
+                  <li style="padding-left: 0em"><a href="/deployment/fly-io#6-bootstrap-script">6. Bootstrap Script</a></li>
+                  <li style="padding-left: 0em"><a href="/deployment/fly-io#7-start-script">7. Start Script</a></li>
+                  <li style="padding-left: 0em"><a href="/deployment/fly-io#8-flytoml">8. fly.toml</a></li>
+                  <li style="padding-left: 0.75em">
+                    <a href="/deployment/fly-io#a-front-end-health-check-must-probe-zonai">A Front-End Health Check Must Probe Zonai</a>
+                  </li>
+                  <li style="padding-left: 0.75em"><a href="/deployment/fly-io#sizing-the-machine">Sizing the Machine</a></li>
+                  <li style="padding-left: 0em">
+                    <a href="/deployment/fly-io#9-create-the-app-volume-and-secrets">9. Create the App, Volume, and Secrets</a>
+                  </li>
+                  <li style="padding-left: 0em"><a href="/deployment/fly-io#10-deploy-and-verify">10. Deploy and Verify</a></li>
+                  <li style="padding-left: 0em"><a href="/deployment/fly-io#redeploying">Redeploying</a></li>
+                  <li style="padding-left: 0em"><a href="/deployment/fly-io#verifying-locally-optional">Verifying Locally (Optional)</a></li>
+                  <li style="padding-left: 0em">
+                    <a href="/deployment/fly-io#dont-ship-a-hardcoded-localhost-baseurl">Don't Ship a Hardcoded localhost baseUrl</a>
+                  </li>
+                  <li style="padding-left: 0em"><a href="/deployment/fly-io#if-the-server-segfaults-on-boot">If the Server Segfaults on Boot</a></li>
+                  <li style="padding-left: 0em">
+                    <a href="/deployment/fly-io#appendix-rebuilding-the-framework-from-source">Appendix: Rebuilding the Framework From Source</a>
+                  </li>
+                  <li style="padding-left: 0.75em"><a href="/deployment/fly-io#path-a-compile-the-cli">Path A: Compile the CLI</a></li>
+                  <li style="padding-left: 0.75em"><a href="/deployment/fly-io#path-b-use-a-release-binary">Path B: Use a Release Binary</a></li>
+                  <li style="padding-left: 0.75em"><a href="/deployment/fly-io#then-build-the-app-bundle">Then Build the App Bundle</a></li>
+                </ul>
+              </div>
+            </aside>
+          </div>
+        </main>
+      </div>
+    </div>
+  </body>
+</html>
